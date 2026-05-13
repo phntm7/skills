@@ -6,8 +6,6 @@ description: >
   adaptation. Use when crafting a new prompt, improving an existing one,
   designing an agent, or asking how to prompt GPT-5, Claude, Gemini, Kimi,
   Qwen, DeepSeek, or smaller/local models.
-metadata:
-  kind: specialist
 ---
 
 # Prompt Craft
