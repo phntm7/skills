@@ -5,21 +5,28 @@ Last verified: 2026-05-13
 ## Functional Equivalence
 
 Treat `AGENTS.md` and `CLAUDE.md` as equivalent repository instruction files.
-Prefer `AGENTS.md` as the canonical cross-agent file. Use `CLAUDE.md` as a
-symlink to `AGENTS.md` unless the user requests separate files or the project has
-a concrete compatibility reason.
+Prefer `AGENTS.md` as the canonical cross-agent file. Use `CLAUDE.md` as an
+import wrapper containing `@AGENTS.md` plus optional Claude-specific content
+unless the user requests separate files or the project has a concrete
+compatibility reason.
 
 ## Quality Criteria
 
-| Criterion | Weight | Good State |
-| --- | --- | --- |
-| Commands/workflows | High | Exact current commands with when-to-run context |
-| Architecture clarity | High | Key directories, entry points, and boundaries are findable |
-| Non-obvious patterns | Medium | Gotchas, generated code, migrations, and compatibility constraints are captured |
-| Conciseness | Medium | Dense, non-redundant, no generic agent advice |
-| Currency | High | Paths, tools, and workflows match the current repo |
-| Actionability | High | Rules can be followed and verified |
-| Synchronization | Medium | `AGENTS.md` and `CLAUDE.md` are symlinked or intentionally aligned |
+Score audits on a 100-point scale:
+
+| Criterion | Points | Full credit |
+| --- | ---: | --- |
+| Commands/workflows | 20 | Essential build, test, lint, deploy, and common workflow commands are documented with context |
+| Architecture clarity | 20 | Key directories, module relationships, entry points, and relevant data flow are clear |
+| Non-obvious patterns | 15 | Gotchas, quirks, workarounds, edge cases, and unusual "why" decisions are captured |
+| Conciseness | 15 | Dense, valuable content with no filler, duplicated rules, or obvious restatements |
+| Currency | 15 | Commands work, paths exist, file references are accurate, and stack details are current |
+| Actionability | 15 | Instructions are concrete, executable, and verifiable |
+
+Use partial scores of 75%, 50%, 25%, or 0% for each criterion when the file is
+incomplete. Assign grades with `A` = 90-100, `B` = 80-89, `C` = 70-79,
+`D` = 60-69, and `F` below 60. Report synchronization/import state separately
+from the score because it is a packaging concern, not instruction quality.
 
 ## Maintenance Decision Tree
 
@@ -38,7 +45,8 @@ a concrete compatibility reason.
    - Keep the main file operational; move deep background elsewhere.
 
 4. **Do `AGENTS.md` and `CLAUDE.md` differ?**
-   - If divergence is accidental, merge and symlink.
+   - If divergence is accidental, merge universal content into `AGENTS.md` and
+     make `CLAUDE.md` import it.
    - If divergence is intentional, label the tool-specific parts and keep shared
      content consistent.
 
@@ -53,6 +61,7 @@ Remove or rewrite:
 - broad claims that are not true for the repo;
 - one-off task history;
 - copied README sections that do not guide agent behavior;
+- personal preferences or machine-specific paths in the shared file;
 - model-specific advice mixed into universal project policy without a reason.
 
 Preserve:
@@ -63,24 +72,33 @@ Preserve:
 - security, secrets, and production safety constraints;
 - PR/commit/review conventions that the team actually follows.
 
-## Symlink Handling
+## CLAUDE.md Import Handling
 
-Preferred command from the repo root:
+Preferred `CLAUDE.md` content from the repo root:
+
+```markdown
+@AGENTS.md
+
+## Claude Code
+
+[Claude-specific notes, only when needed.]
+```
+
+Before replacing a real `CLAUDE.md`, preserve useful universal content by
+merging it into `AGENTS.md`, preserve truly Claude-specific content under
+`## Claude Code`, and review the diff.
+
+Use a symlink only when the user explicitly prefers it, there is no
+Claude-specific content, and the OS supports symlinks without elevated
+privileges:
 
 ```bash
 ln -s AGENTS.md CLAUDE.md
 ```
 
-Before replacing a real `CLAUDE.md`, preserve useful content by merging it into
-`AGENTS.md` and review the diff. Do not delete a non-symlink file without clear
-approval when it contains content not already represented elsewhere.
-
-If symlinks are not viable, copy the canonical content and add a short note such
-as:
-
-```markdown
-<!-- Keep this file synchronized with AGENTS.md. -->
-```
+On Windows, use `@AGENTS.md` instead of copying content or relying on symlinks.
+Block-level HTML comments in `CLAUDE.md` are stripped before context injection,
+so they can hold maintainer notes without spending context.
 
 ## Source-Informed Best Practices
 
@@ -89,11 +107,19 @@ as:
 - Codex loads global and project `AGENTS.md` files in precedence order; closer
   project files override broader guidance.
 - Claude Code uses `CLAUDE.md` as persistent memory and recommends specific,
-  concise, structured instructions.
+  concise, structured instructions under 200 lines per file.
+- Claude Code imports files with `@path`, supports `./.claude/CLAUDE.md`,
+  `CLAUDE.local.md`, and `.claude/rules/`, and can exclude irrelevant files in
+  monorepos with `claudeMdExcludes`.
+- Claude Code auto memory is separate from user-written `CLAUDE.md` and lives at
+  `~/.claude/projects/<project>/memory/`.
 - Current OpenAI GPT-5 coding guidance emphasizes explicit role/workflow
   guidance, structured tool use, testing/validation, and clean Markdown.
 - Good coding-agent guidance defines success criteria, asks for verifiable
   outputs, and avoids hidden chain-of-thought requests.
+- Rules that must run at fixed lifecycle points belong in hooks. Task-specific
+  procedures that should not load every session belong in skills. Scripted
+  system-level behavior can use `--append-system-prompt`.
 
 ## Sources
 
@@ -101,8 +127,11 @@ as:
 - OpenAI Codex AGENTS.md guide: https://developers.openai.com/codex/guides/agents-md
 - OpenAI Codex best practices: https://developers.openai.com/codex/learn/best-practices
 - OpenAI prompt engineering for GPT-5 coding agents: https://developers.openai.com/api/docs/guides/prompt-engineering#coding
-- Anthropic Claude Code memory docs: https://docs.claude.com/en/docs/claude-code/memory
+- Anthropic Claude Code memory docs: https://code.claude.com/docs/en/memory
 - Anthropic Claude Code best practices: https://code.claude.com/docs/en/best-practices
+- Anthropic Claude Code skills: https://code.claude.com/docs/en/skills
+- Anthropic Claude Code hooks: https://code.claude.com/docs/en/hooks-guide
+- Anthropic Claude Code CLI reference: https://code.claude.com/docs/en/cli-reference
 - Anthropic claude-md-improver quality criteria: https://github.com/anthropics/claude-plugins-official/blob/main/plugins/claude-md-management/skills/claude-md-improver/references/quality-criteria.md
 - GitHub awesome-copilot create-agentsmd skill: https://github.com/github/awesome-copilot/blob/main/skills/create-agentsmd/SKILL.md
 - Karpathy guidelines skill: https://github.com/multica-ai/andrej-karpathy-skills/blob/main/skills/karpathy-guidelines/SKILL.md

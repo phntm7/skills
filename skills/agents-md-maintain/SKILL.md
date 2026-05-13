@@ -12,8 +12,8 @@ description: >
 Use this skill to improve existing coding-agent instruction files while
 preserving their intent. Treat `AGENTS.md` and `CLAUDE.md` as equivalent
 instruction files: prefer shared universal content, keep `AGENTS.md` canonical
-when possible, and keep `CLAUDE.md` symlinked to `AGENTS.md` unless the user
-wants separate files.
+when possible, and keep `CLAUDE.md` as an `@AGENTS.md` import wrapper unless the
+user wants separate files.
 
 ## When To Use
 
@@ -22,7 +22,7 @@ wants separate files.
 - Existing instruction files are stale, duplicated, too verbose, contradictory,
   missing commands, or out of sync.
 - The user wants `AGENTS.md` and `CLAUDE.md` to be reconciled or converted to a
-  symlink/canonical-file setup.
+  canonical import setup.
 
 If the project has no instruction file and the user wants one created from
 scratch, use the initialization workflow instead.
@@ -35,20 +35,23 @@ you need the quality rubric, cleanup rules, report format, or source links.
 ## Maintenance Workflow
 
 1. **Discover instruction files**
-   - Find root and nested `AGENTS.md`, `CLAUDE.md`, `AGENTS.override.md`,
-     `.claude/CLAUDE.md`, and related local variants.
-   - Resolve symlinks before editing. If `CLAUDE.md` points to `AGENTS.md`,
-     edit the target once.
-   - Identify whether files are canonical/symlinked, duplicated, divergent, or
-     intentionally separate.
+   - Find root and nested `AGENTS.md`, `AGENTS.override.md`, `CLAUDE.md`,
+     `.claude/CLAUDE.md`, `.claude/rules/`, and `CLAUDE.local.md`.
+   - For audit work, account for Claude Code's full memory scope: managed policy
+     files (`/Library/Application Support/ClaudeCode/CLAUDE.md`,
+     `/etc/claude-code/CLAUDE.md`, or
+     `C:\Program Files\ClaudeCode\CLAUDE.md`), project files,
+     `~/.claude/CLAUDE.md`, and local gitignored `CLAUDE.local.md`.
+   - Determine whether `CLAUDE.md` imports `@AGENTS.md`, is a symlink, is
+     duplicated content, divergent, or intentionally separate.
 
 2. **Classify the request**
    - **Add**: insert a durable project rule, command, gotcha, or workflow note.
    - **Refactor/clean up**: reduce duplication, improve headings, remove stale
      or generic guidance, and tighten wording.
    - **Audit**: score quality and recommend targeted changes.
-   - **Synchronize**: merge universal content and make `CLAUDE.md` a symlink to
-     `AGENTS.md` when appropriate.
+   - **Synchronize**: merge universal content into `AGENTS.md` and make
+     `CLAUDE.md` import `@AGENTS.md` when appropriate.
    - **Split**: keep files separate only when the user requests it or a tool
      genuinely needs different syntax.
 
@@ -65,6 +68,10 @@ you need the quality rubric, cleanup rules, report format, or source links.
    - Keep most instructions universal for both `AGENTS.md` and `CLAUDE.md`.
    - Place file-specific notes under small explicit headings only when needed,
      for example `Claude Code Notes` or `Codex Notes`.
+   - Move Claude-only path-scoped rules to `.claude/rules/` with `paths`
+     frontmatter when that keeps the main file smaller.
+   - If a rule must execute at a fixed lifecycle point, prefer a hook over a
+     memory-file instruction. If a workflow is task-specific, prefer a skill.
    - Avoid unrelated rewrites. Every changed line should trace to the user's
      request or to keeping the instruction files accurate.
 
@@ -73,17 +80,18 @@ you need the quality rubric, cleanup rules, report format, or source links.
 
      ```text
      AGENTS.md
-     CLAUDE.md -> AGENTS.md
+     CLAUDE.md  # contains @AGENTS.md plus optional Claude-specific notes
      ```
 
    - If both files contain useful divergent content, merge universal guidance
-     into `AGENTS.md`, preserve any truly file-specific notes, then ask before
-     deleting/replacing a non-symlink `CLAUDE.md`.
-   - If symlinks are unsuitable, keep the two files textually aligned and add a
-     brief maintenance note.
+     into `AGENTS.md`, preserve truly Claude-specific notes under `## Claude
+     Code`, then reduce `CLAUDE.md` to an import wrapper.
+   - Use a symlink only when the user explicitly prefers it, there is no
+     Claude-specific content, and the OS supports symlinks without elevated
+     privileges. On Windows, use `@AGENTS.md` instead.
 
 6. **Verify**
-   - Confirm symlinks and target content resolve as intended.
+   - Confirm imports, symlinks, and target content resolve as intended.
    - Re-run or at least inspect commands affected by the edit. If a listed
      command was not validated, say so.
    - Review the diff before finalizing and ensure no unrelated content changed.
@@ -100,11 +108,12 @@ Use this compact format:
 
 ### Summary
 - Files found: X
-- Canonical state: AGENTS.md / CLAUDE.md symlink / separate files
+- Canonical state: AGENTS.md / CLAUDE.md imports @AGENTS.md / separate files
+- Score: N/100, grade A-F
 - Main risks: ...
 
 ### Findings
-- [severity] [file]: [problem] -> [specific fix]
+- [critical|important|minor] [file]: [problem] -> [specific fix]
 
 ### Proposed Changes
 - [target file]: [change and why it helps future sessions]
@@ -115,7 +124,8 @@ Use this compact format:
 - Prefer precise, executable guidance: exact commands, paths, ownership
   boundaries, and verification gates.
 - Keep the file short enough to be read every session. Move long background
-  material to referenced docs.
+  material to referenced docs; target under 200 lines for each loaded
+  instruction file.
 - Use "when X, do Y" rules and short rationale for unusual constraints.
 - Remove generic prompt boilerplate, motivational language, duplicated rules,
   stale command lists, and large README copies.
@@ -129,7 +139,8 @@ Use this compact format:
 
 After making changes, report:
 
-- files changed and whether symlink/canonical state changed;
+- files changed and whether import/canonical state changed;
+- whether `CLAUDE.md` imports `@AGENTS.md`, is a symlink, or is separate;
 - what guidance was added, removed, or reorganized;
 - validation performed;
 - unresolved assumptions or commands not run.

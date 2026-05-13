@@ -1,4 +1,4 @@
 interface:
   display_name: "AGENTS.md Maintain"
   short_description: "Update and synchronize AGENTS.md/CLAUDE.md files."
-  default_prompt: "Use $agents-md-maintain to audit and improve this repo's AGENTS.md and CLAUDE.md files."
+  default_prompt: "Use $agents-md-maintain to audit and improve this repo's AGENTS.md and CLAUDE.md import setup."

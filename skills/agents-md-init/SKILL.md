@@ -11,8 +11,8 @@ description: >
 
 Use this skill to analyze a project and create practical, current instructions
 for coding agents. Treat `AGENTS.md` and `CLAUDE.md` as equivalent instruction
-files: prefer `AGENTS.md` as the canonical file and make `CLAUDE.md` a symlink
-to it unless the user explicitly wants separate files.
+files: prefer `AGENTS.md` as the canonical shared file and make `CLAUDE.md`
+import it with `@AGENTS.md` unless the user explicitly wants another setup.
 
 ## When To Use
 
@@ -29,16 +29,17 @@ instead.
 ## Load References
 
 Read [references/instruction-file-practices.md](references/instruction-file-practices.md)
-when you need the quality rubric, recommended sections, symlink rules, or source
-links.
+when you need the quality rubric, recommended sections, import/symlink rules, or
+source links.
 
 ## Initialization Workflow
 
 1. **Discover current state**
-   - Check for `AGENTS.md`, `CLAUDE.md`, `AGENTS.override.md`, nested
+   - Check for `AGENTS.md`, `CLAUDE.md`, `.claude/CLAUDE.md`,
+     `CLAUDE.local.md`, `AGENTS.override.md`, `.claude/rules/`, nested
      instruction files, and relevant `.gitignore` entries.
-   - Use `ls -l` or equivalent to determine whether `CLAUDE.md` already points
-     to `AGENTS.md`.
+   - Determine whether `CLAUDE.md` imports `@AGENTS.md`, is a symlink, is
+     duplicated content, or is intentionally separate.
    - Do not overwrite a non-empty existing instruction file without preserving
      its content or getting explicit approval.
 
@@ -54,26 +55,28 @@ links.
 
 3. **Choose the file plan**
    - Default: create `AGENTS.md` at the repository root and create `CLAUDE.md`
-     as a relative symlink to `AGENTS.md`.
+     containing `@AGENTS.md`, followed by any Claude-specific notes.
    - If `CLAUDE.md` exists but `AGENTS.md` does not, create `AGENTS.md` from the
-     existing content plus project analysis, then convert `CLAUDE.md` to a
-     symlink only after preserving the original content and when the user has
-     not requested separate files.
-   - If both files exist and are not symlinked, inspect both, merge universal
-     guidance into `AGENTS.md`, and ask before replacing either file or
-     converting to a symlink.
-   - Create separate files only when the user asks, a tool requires materially
-     different syntax, or local policy makes symlinks unsuitable. Keep shared
-     guidance duplicated or imported from one canonical source, and isolate
-     file-specific notes in small labeled sections.
+     existing content plus project analysis, then reduce `CLAUDE.md` to an
+     import wrapper with any truly Claude-specific content preserved.
+   - If both files exist but are not aligned, inspect both, merge universal
+     guidance into `AGENTS.md`, and keep `CLAUDE.md` as an import wrapper unless
+     the user wants separate files.
+   - Use a symlink only when the user explicitly prefers it, there is no
+     Claude-specific content to add, and the operating system supports symlinks
+     without elevated privileges. On Windows, use `@AGENTS.md` instead.
+   - Create separate full files only when the user asks or a tool requires
+     materially different syntax. Keep shared guidance in `AGENTS.md` and
+     isolate file-specific notes in small labeled sections.
 
 4. **Draft `AGENTS.md`**
    - Start with the project name and a one-paragraph purpose only if it helps an
      agent orient quickly.
-   - Include only relevant sections. Favor these headings when applicable:
-     `Project Overview`, `Repository Layout`, `Setup`, `Development Commands`,
-     `Testing`, `Code Style`, `Architecture Notes`, `Environment`, `Security`,
-     `Workflow`, `Pull Requests`, and `Known Gotchas`.
+   - Include only relevant sections and target under 200 lines for each loaded
+     instruction file. Favor a compact core: `Project Overview`,
+     `Repository Layout`, `Setup`, `Development Commands`, `Testing`, and
+     `Architecture Notes`. Add `Security`, `Environment`, `Workflow`, or
+     `Known Gotchas` only when they contain project-specific guidance.
    - Use exact commands from the repo, with short explanations of when to run
      them. Mark commands as required, preferred, expensive, or optional when
      that distinction matters.
@@ -81,26 +84,35 @@ links.
      generic advice every coding agent should already know.
    - Put universal instructions first. Add `AGENTS.md`-specific or
      `CLAUDE.md`-specific notes only when the tools truly differ.
+   - For Claude-only instructions that apply only to certain paths, prefer
+     `.claude/rules/` with `paths` frontmatter instead of bloating the main
+     file.
 
 5. **Create the files**
    - Write `AGENTS.md`.
-   - Unless the user wanted separate files, create `CLAUDE.md` as a relative
-     symlink:
+   - Unless the user requested separate files, write `CLAUDE.md` as an import
+     wrapper:
 
-     ```bash
-     ln -s AGENTS.md CLAUDE.md
+     ```markdown
+     @AGENTS.md
+
+     ## Claude Code
+
+     [Claude-specific notes, only when needed.]
      ```
 
-   - If the platform cannot use symlinks, copy `AGENTS.md` to `CLAUDE.md` and
-     add a short maintenance note in both files explaining that they should stay
-     synchronized.
+   - If running inside Claude Code, this skill replaces or extends the built-in
+     `/init` flow with a portable `AGENTS.md`-first variant. Claude Code's
+     built-in `/init` can also read an existing `AGENTS.md`, and
+     `CLAUDE_CODE_NEW_INIT=1` enables its interactive multi-phase init flow.
 
 6. **Verify**
    - Confirm both paths resolve and contain the intended content:
 
      ```bash
      test -s AGENTS.md
-     test -L CLAUDE.md && test "$(readlink CLAUDE.md)" = "AGENTS.md"
+     test -s CLAUDE.md
+     grep -q '^@AGENTS.md$' CLAUDE.md || test -L CLAUDE.md
      ```
 
    - Validate every documented command as far as feasible. If a command was not
@@ -116,6 +128,10 @@ links.
   blocks.
 - Prefer "when X, run Y" instructions over personality traits or slogans.
 - Include success criteria and verification gates for common workflows.
+- If a rule must run at a fixed lifecycle point, document or create a hook
+  instead of relying only on an instruction file.
+- For task-specific procedures that do not need to load every session, create a
+  skill instead of adding more content to `AGENTS.md` or `CLAUDE.md`.
 - Avoid asking agents to reveal chain-of-thought. Ask for conclusions, checks,
   evidence, diffs, or concise rationale instead.
 - Avoid instructions that conflict with host-agent system messages, sandbox
@@ -128,7 +144,7 @@ links.
 After initializing, report:
 
 - files created or changed;
-- whether `CLAUDE.md` is a symlink, separate file, or copied fallback;
+- whether `CLAUDE.md` imports `@AGENTS.md`, is a symlink, or is separate;
 - the main commands and conventions captured;
 - validation performed and any commands not run.
 
