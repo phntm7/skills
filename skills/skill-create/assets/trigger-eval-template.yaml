@@ -1,0 +1,8 @@
+should_trigger:
+  - "Create a new skill for converting CSV files to JSON."
+  - "Help me write a SKILL.md for deploy automation."
+  - "Turn this repeated PR review workflow into an agent skill."
+should_not_trigger:
+  - "Edit the README of my project."
+  - "Create a JSON file from this one-off data sample."
+  - "Review this single prompt without turning it into a reusable skill."

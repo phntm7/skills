@@ -28,10 +28,17 @@ def parse_resources(raw: str) -> list[str]:
     unknown = sorted(set(resources) - ALLOWED_RESOURCES)
     if unknown:
         raise ValueError(f"unknown resource(s): {', '.join(unknown)}")
+    # Preserve first-seen order so generated folders follow user intent.
     return sorted(set(resources), key=resources.index)
 
 
-def write_skill(skill_dir: Path, name: str, resources: list[str], force: bool) -> None:
+def write_skill(
+    skill_dir: Path,
+    name: str,
+    resources: list[str],
+    force: bool,
+    codex_metadata: bool,
+) -> None:
     if skill_dir.exists() and any(skill_dir.iterdir()) and not force:
         raise FileExistsError(f"{skill_dir} already exists; use --force to write into it")
     skill_dir.mkdir(parents=True, exist_ok=True)
@@ -63,6 +70,15 @@ Use this skill to [TODO: one-sentence operating purpose].
 
 - [TODO: important constraint or boundary]
 - [TODO: what this skill should not do]
+
+## Examples
+
+Good: [TODO: realistic user request that should trigger this skill]
+Bad: [TODO: near-miss request that should not trigger this skill]
+
+## Common Edge Cases
+
+- [TODO: edge case and how to handle it]
 """,
         encoding="utf-8",
     )
@@ -70,16 +86,17 @@ Use this skill to [TODO: one-sentence operating purpose].
     for resource in resources:
         (skill_dir / resource).mkdir(exist_ok=True)
 
-    agents_dir = skill_dir / "agents"
-    agents_dir.mkdir(exist_ok=True)
-    (agents_dir / "openai.yaml").write_text(
-        f"""interface:
+    if codex_metadata:
+        agents_dir = skill_dir / "agents"
+        agents_dir.mkdir(exist_ok=True)
+        (agents_dir / "openai.yaml").write_text(
+            f"""interface:
   display_name: "{title}"
   short_description: "[TODO: 25-64 char UI description]"
   default_prompt: "Use ${name} to [TODO: example starting prompt]."
 """,
-        encoding="utf-8",
-    )
+            encoding="utf-8",
+        )
 
 
 def main() -> int:
@@ -90,6 +107,11 @@ def main() -> int:
         "--resources",
         default="",
         help="comma-separated optional resources: references,scripts,assets",
+    )
+    parser.add_argument(
+        "--no-codex-metadata",
+        action="store_true",
+        help="do not create agents/openai.yaml",
     )
     parser.add_argument("--force", action="store_true", help="write into an existing directory")
     args = parser.parse_args()
@@ -105,7 +127,13 @@ def main() -> int:
     try:
         resources = parse_resources(args.resources)
         skill_dir = args.path / name
-        write_skill(skill_dir, name, resources, args.force)
+        write_skill(
+            skill_dir,
+            name,
+            resources,
+            args.force,
+            codex_metadata=not args.no_codex_metadata,
+        )
     except Exception as exc:  # noqa: BLE001 - CLI should print any setup failure
         print(f"[ERROR] {exc}", file=sys.stderr)
         return 1

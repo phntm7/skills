@@ -10,7 +10,16 @@ from pathlib import Path
 
 MAX_NAME_LENGTH = 64
 MAX_DESCRIPTION_LENGTH = 1024
-PORTABLE_KEYS = {"name", "description", "license", "compatibility", "metadata"}
+MAX_COMPATIBILITY_LENGTH = 500
+SOFT_BODY_LINE_LIMIT = 500
+PORTABLE_KEYS = {
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata",
+    "allowed-tools",
+}
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, object], list[str]]:
@@ -62,15 +71,23 @@ def parse_frontmatter(text: str) -> tuple[dict[str, object], list[str]]:
     return data, warnings
 
 
+def frontmatter_line_count(text: str) -> int:
+    end = text.find("\n---", 4)
+    if end == -1:
+        return 0
+    return text[: end + 4].count("\n") + 1
+
+
 def validate(skill_dir: Path, strict: bool = False) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
     skill_md = skill_dir / "SKILL.md"
     if not skill_md.exists():
         return ["SKILL.md not found"], warnings
+    skill_text = skill_md.read_text()
 
     try:
-        data, parse_warnings = parse_frontmatter(skill_md.read_text())
+        data, parse_warnings = parse_frontmatter(skill_text)
         warnings.extend(parse_warnings)
     except Exception as exc:  # noqa: BLE001 - validation should report any parse failure
         return [str(exc)], warnings
@@ -87,8 +104,12 @@ def validate(skill_dir: Path, strict: bool = False) -> tuple[list[str], list[str
         name = name.strip()
         if len(name) > MAX_NAME_LENGTH:
             errors.append(f"name is too long ({len(name)} > {MAX_NAME_LENGTH})")
-        if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
-            errors.append("name must use lowercase letters, digits, and single hyphens")
+        if name.startswith("-") or name.endswith("-"):
+            errors.append("name cannot start or end with a hyphen")
+        if "--" in name:
+            errors.append("name cannot contain consecutive hyphens")
+        if not re.fullmatch(r"[a-z0-9-]+", name):
+            errors.append("name must use only lowercase letters, digits, and hyphens")
         if skill_dir.name != name:
             errors.append(f"folder name {skill_dir.name!r} must match frontmatter name {name!r}")
 
@@ -101,23 +122,44 @@ def validate(skill_dir: Path, strict: bool = False) -> tuple[list[str], list[str
             errors.append(
                 f"description is too long ({len(description)} > {MAX_DESCRIPTION_LENGTH})"
             )
+        # 80 chars is a soft floor: shorter descriptions tend to omit trigger context.
         if len(description) < 80:
             warnings.append("description may be too short for reliable discovery")
         if "<" in description or ">" in description:
             warnings.append("description contains angle brackets; some agents reject them")
+
+    compatibility = data.get("compatibility")
+    if compatibility is not None:
+        if not isinstance(compatibility, str):
+            errors.append("frontmatter.compatibility must be a string when present")
+        elif not compatibility.strip():
+            errors.append("frontmatter.compatibility cannot be empty when present")
+        elif len(compatibility.strip()) > MAX_COMPATIBILITY_LENGTH:
+            errors.append(
+                "compatibility is too long "
+                f"({len(compatibility.strip())} > {MAX_COMPATIBILITY_LENGTH})"
+            )
+
+    body_lines = max(0, len(skill_text.splitlines()) - frontmatter_line_count(skill_text))
+    if body_lines > SOFT_BODY_LINE_LIMIT:
+        warnings.append(
+            f"SKILL.md body is {body_lines} lines; spec recommends <= {SOFT_BODY_LINE_LIMIT}"
+        )
 
     for resource in ("references", "scripts", "assets"):
         path = skill_dir / resource
         if path.exists() and not path.is_dir():
             errors.append(f"{resource}/ exists but is not a directory")
 
-    if "[TODO:" in skill_md.read_text() or "TODO:" in skill_md.read_text():
+    if "[TODO:" in skill_text or "TODO:" in skill_text:
         warnings.append("SKILL.md still contains TODO placeholder text")
 
-    linked_refs = set(re.findall(r"\((references/[^)]+\.md)\)", skill_md.read_text()))
-    for ref in sorted(linked_refs):
-        if not (skill_dir / ref).exists():
-            errors.append(f"linked reference missing: {ref}")
+    linked_paths = set(
+        re.findall(r"\(((?:references|scripts|assets)/[^)\s]+)\)", skill_text)
+    )
+    for linked_path in sorted(linked_paths):
+        if not (skill_dir / linked_path).exists():
+            errors.append(f"linked path missing: {linked_path}")
 
     return errors, warnings
 

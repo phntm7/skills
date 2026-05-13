@@ -6,8 +6,6 @@ description: >
   a new skill, updating an existing skill, designing trigger descriptions,
   adding scripts/references/assets, validating skill structure, or turning a
   repeated workflow into reusable agent instructions.
-metadata:
-  kind: specialist
 ---
 
 # Skill Create
@@ -23,6 +21,8 @@ Use this skill to create portable skills that work across agents instead of lock
 ## Default Output Location
 
 In this repo, create or update skills under `skills/<skill-name>/`. Do not create duplicate canonical copies under `.agents/skills`, `.claude/skills`, or `.opencode/skills` unless the user asks for a platform-local install test.
+
+Use `scripts/init_skill.py` to scaffold a new skill when starting from scratch. It creates `agents/openai.yaml` by default for Codex UI metadata; use `--no-codex-metadata` when the user wants the portable minimum only.
 
 ## Creation Workflow
 
@@ -93,8 +93,8 @@ Before declaring the skill done:
 From this skill directory:
 
 ```bash
-python3 scripts/init_skill.py prompt-craft --path ../../skills --resources references
-python3 scripts/validate_skill.py ../../skills/prompt-craft
+python3 scripts/init_skill.py <skill-name> --path ../../skills --resources references
+python3 scripts/validate_skill.py ../../skills/<skill-name>
 ```
 
 From the repo root:
@@ -109,6 +109,8 @@ DISABLE_TELEMETRY=1 npx --yes skills add . --list
 - Anthropic skill creator: https://github.com/anthropics/skills/tree/main/skills/skill-creator
 - OpenAI skill creator: https://github.com/openai/skills/tree/main/skills/.system/skill-creator
 - Codex skills: https://developers.openai.com/codex/skills/
+- Codex plugins: https://developers.openai.com/codex/plugins/build
 - Claude Code skills: https://code.claude.com/docs/en/skills
+- Claude Code plugins: https://code.claude.com/docs/en/plugins
 - OpenCode skills: https://opencode.ai/docs/skills/
 - skills CLI: https://www.skills.sh/docs/cli

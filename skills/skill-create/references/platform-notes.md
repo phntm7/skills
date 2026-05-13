@@ -19,7 +19,7 @@ The safest shared baseline is:
 
 - Direct repo skills are discovered from `.agents/skills`, but this repo keeps canonical skills under `skills/` and exposes them through plugin/installer metadata.
 - Codex reads `name`, `description`, and the skill path for discovery, then loads `SKILL.md` after selection.
-- `agents/openai.yaml` can add Codex UI metadata, default prompts, invocation policy, and tool dependencies.
+- `agents/openai.yaml` can add Codex UI metadata, icons, brand color, default prompts, invocation policy, and tool dependencies. In `default_prompt`, `$skill-name` is the explicit Codex skill mention form.
 - Codex plugin packaging uses `.codex-plugin/plugin.json` with `"skills": "./skills/"`.
 
 ## Claude Code
@@ -31,9 +31,9 @@ The safest shared baseline is:
 
 ## OpenCode
 
-- OpenCode supports global skills in `~/.config/opencode/skill`, project skills in `.opencode/skill`, and also loads compatible Claude and Agent Skills directories.
-- It recognizes `name`, `description`, `license`, `compatibility`, and `metadata` in frontmatter. Unknown frontmatter is ignored, but portable skills should not depend on ignored fields.
-- OpenCode skills can be referenced with `@skill-name` in prompts.
+- OpenCode loads skills from `.opencode/skills/<name>/`, `~/.config/opencode/skills/<name>/`, and also discovers `.claude/skills/` and `.agents/skills/` directories.
+- It recognizes `name`, `description`, `license`, `compatibility`, and `metadata` in frontmatter. Unknown fields are ignored. Do not rely on agent-specific fields in the portable path.
+- Skills are invoked by the agent through a built-in `skill` tool, for example `skill({ name: "skill-name" })`, not by `@skill-name` mentions.
 
 ## skills CLI
 

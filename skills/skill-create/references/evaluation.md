@@ -44,6 +44,19 @@ Should-not-trigger examples should be near misses:
 - adjacent domains owned by another skill;
 - simple tasks that the base agent can handle without the skill.
 
+Minimal trigger-eval template:
+
+```yaml
+should_trigger:
+  - "Create a new skill for converting CSV files to JSON."
+  - "Help me write a SKILL.md for deploy automation."
+should_not_trigger:
+  - "Edit the README of my project."
+  - "Create a JSON file from this one-off data sample."
+```
+
+For reusable eval files, start from [../assets/trigger-eval-template.yaml](../assets/trigger-eval-template.yaml).
+
 ## Avoid Overfitting
 
 - Do not add a rule that only fixes one eval unless the rule generalizes.
@@ -55,3 +68,4 @@ Should-not-trigger examples should be near misses:
 
 - Anthropic skill creator eval workflow: https://github.com/anthropics/skills/tree/main/skills/skill-creator
 - OpenAI skill creator validation workflow: https://github.com/openai/skills/tree/main/skills/.system/skill-creator
+- Agent Skills reference validator: https://github.com/agentskills/agentskills/tree/main/skills-ref
