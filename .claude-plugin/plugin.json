@@ -1,0 +1,19 @@
+{
+  "name": "phntm",
+  "version": "0.1.0",
+  "description": "Personal agent skills for reusable AI coding workflows.",
+  "author": {
+    "name": "phntm7",
+    "url": "https://github.com/phntm7"
+  },
+  "homepage": "https://github.com/phntm7/skills",
+  "repository": "https://github.com/phntm7/skills",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "skills"
+  ],
+  "skills": "./skills/"
+}

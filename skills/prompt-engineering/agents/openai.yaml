@@ -1,0 +1,4 @@
+interface:
+  display_name: "Prompt Engineering"
+  short_description: "Create and review LLM-facing instructions."
+  default_prompt: "Use prompt-engineering to review this prompt for clarity, tool guidance, output contracts, and context efficiency."

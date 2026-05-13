@@ -1,0 +1,25 @@
+{
+  "name": "phntm",
+  "owner": {
+    "name": "phntm7"
+  },
+  "description": "Private marketplace for personal agent skills.",
+  "plugins": [
+    {
+      "name": "phntm",
+      "source": "./",
+      "description": "Personal agent skills for reusable AI coding workflows.",
+      "version": "0.1.0",
+      "author": {
+        "name": "phntm7"
+      },
+      "repository": "https://github.com/phntm7/skills",
+      "license": "MIT",
+      "category": "Productivity",
+      "tags": [
+        "agent-skills",
+        "coding-agents"
+      ]
+    }
+  ]
+}

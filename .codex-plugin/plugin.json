@@ -1,0 +1,34 @@
+{
+  "name": "phntm",
+  "version": "0.1.0",
+  "description": "PHNTM's Personal agent skills for reusable AI coding workflows.",
+  "author": {
+    "name": "phntm7",
+    "url": "https://github.com/phntm7"
+  },
+  "repository": "https://github.com/phntm7/skills",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "codex",
+    "claude-code",
+    "skills"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "PHNTM",
+    "shortDescription": "Reusable personal workflows for coding agents.",
+    "longDescription": "A private collection of personal agent skills that can be installed into Codex, Claude Code, and tools compatible with the Agent Skills format.",
+    "developerName": "phntm7",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/phntm7/skills",
+    "defaultPrompt": [
+      "Use PHNTM skills for this task.",
+      "List the PHNTM skills available in this workspace."
+    ]
+  }
+}
