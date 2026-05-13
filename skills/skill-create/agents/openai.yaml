@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Create"
-  short_description: "Create portable Agent Skills."
-  default_prompt: "Use skill-create to draft or review a portable Agent Skill for Codex, Claude Code, and skills.sh."
+  short_description: "Create portable SKILL.md skills."
+  default_prompt: "Use $skill-create to create or review a portable agent skill."

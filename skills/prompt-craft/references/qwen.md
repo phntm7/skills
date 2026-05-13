@@ -1,5 +1,9 @@
 # Qwen Prompting Notes
 
+Last verified: 2026-05-13
+
+## Scope
+
 Use this reference for Qwen3.6 and Qwen3-family models. Qwen's official Qwen3.6 repository currently points to a user guide that is still coming, so treat these notes as current capability and formatting guidance rather than a complete prompting guide.
 
 ## Qwen3.6
@@ -19,6 +23,11 @@ Use this reference for Qwen3.6 and Qwen3-family models. Qwen's official Qwen3.6 
 - Qwen3 thinking content is separated from final answers with `<think>` markup. Do not ask for hidden reasoning in final user-visible output unless the product explicitly needs reasoning traces.
 - For Qwen3 local inference, avoid greedy decoding in thinking mode; use the model's recommended sampling settings unless you have eval evidence to change them.
 - Use standard chat templates; incorrect templates can hurt instruction following and tool use.
+
+## Known Gotchas
+
+- Qwen provider features vary across Qwen Cloud, DashScope, vLLM, local templates, and coding-agent wrappers.
+- Thinking mode and strict structured output can conflict depending on provider; verify the exact API surface.
 
 ## Sources
 

@@ -1,5 +1,9 @@
 # Gemini 3 Prompting Notes
 
+Last verified: 2026-05-13
+
+## Scope
+
 Use this reference for Gemini 3 and Gemini 3.1 Pro.
 
 ## Gemini 3 / 3.1 Pro
@@ -27,4 +31,4 @@ Use this reference for Gemini 3 and Gemini 3.1 Pro.
 - Vertex AI Gemini 3 prompting guide: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/gemini-3-prompting-guide
 - Gemini API prompt design strategies: https://ai.google.dev/gemini-api/docs/prompting-strategies
 - Google AI thinking docs: https://ai.google.dev/gemini-api/docs/thinking
-- Third-party Gemini 3 notes by Joey deVilla: https://www.globalnerdy.com/2025/11/26/notes-on-using-gemini-3-pro-part-3-every-prompting-tip-and-trick-i-know-so-far/
+- Third-party, opinionated Gemini 3 notes by Joey deVilla: https://www.globalnerdy.com/2025/11/26/notes-on-using-gemini-3-pro-part-3-every-prompting-tip-and-trick-i-know-so-far/

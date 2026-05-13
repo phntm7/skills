@@ -1,210 +1,114 @@
 ---
 name: skill-create
 description: >
-  Create new agent skills following the Agent Skills open standard and Claude Code conventions.
-  Use when creating a new skill from scratch, adding a skill directory, or when the user asks
-  to build a reusable capability for AI agents.
+  Create, review, or improve portable Agent Skills for Codex, Claude Code,
+  OpenCode, skills.sh, and other SKILL.md-compatible agents. Use when building
+  a new skill, updating an existing skill, designing trigger descriptions,
+  adding scripts/references/assets, validating skill structure, or turning a
+  repeated workflow into reusable agent instructions.
 metadata:
-  kind: leaf
+  kind: specialist
 ---
 
 # Skill Create
 
-Create a new skill that follows the Agent Skills open standard, Claude Code conventions, and this project's structure. Skills must be grounded in real expertise, concise, and tested against real tasks.
+Use this skill to create portable skills that work across agents instead of locking the skill to one runtime. Start with the shared `SKILL.md` contract, then add platform-specific metadata only when the user explicitly needs that platform behavior.
 
-## Preflight
+## Reference Selection
 
-1. **Clarify intent**: Confirm the skill's purpose, target audience (user-invoked, model-invoked, or both), and whether it runs inline or in a subagent (`context: fork`).
-2. **Duplicate check**: List `.agents/skills/` and read `.agents/skills/README.md`. If a skill with overlapping functionality exists, prefer updating it (via `skill-adapt` or direct edit) over creating a new one.
-3. **Symlink awareness**: `.claude/skills/` is a symlink to `.agents/skills/` in this repository. Create files under `.agents/skills/`. Either path resolves to the same location.
+- For the portable skill contract, naming rules, frontmatter, and resource layout, read [references/portable-skill-format.md](references/portable-skill-format.md).
+- For Codex, Claude Code, OpenCode, and `skills.sh` compatibility notes, read [references/platform-notes.md](references/platform-notes.md).
+- For testing, trigger evals, and iteration, read [references/evaluation.md](references/evaluation.md).
 
-## Skill Anatomy
+## Default Output Location
 
-A skill is a directory with `SKILL.md` as the entrypoint:
+In this repo, create or update skills under `skills/<skill-name>/`. Do not create duplicate canonical copies under `.agents/skills`, `.claude/skills`, or `.opencode/skills` unless the user asks for a platform-local install test.
 
-```
-<skill-name>/
-├── SKILL.md           # Required: frontmatter + instructions
-├── references/        # Optional: detailed docs, loaded on demand
-├── scripts/           # Optional: executable code
-└── assets/            # Optional: templates, data files
-```
+## Creation Workflow
 
-### Frontmatter
+1. **Capture intent from examples**: Identify the repeated workflow, target users, likely user phrasing, expected outputs, required tools, and failure modes. Extract examples from the conversation before asking new questions.
+2. **Check overlap**: Inspect existing skills before creating a new one. If a skill overlaps heavily, update it instead of adding a near-duplicate.
+3. **Choose the resource shape**:
+   - Use only `SKILL.md` for short procedural guidance.
+   - Add `references/` for long docs, schemas, platform notes, or variant-specific guidance.
+   - Add `scripts/` when repeated code, deterministic validation, or fragile file manipulation would otherwise be rewritten each run.
+   - Add `assets/` for templates, images, boilerplate, data files, or files copied into outputs.
+4. **Draft the skill**: Write frontmatter, then concise instructions. Keep `SKILL.md` focused on the core workflow and link to references for details.
+5. **Add metadata**: Add `agents/openai.yaml` for Codex UI metadata in this repo. Add Claude/OpenCode-specific fields only when needed and documented in platform notes.
+6. **Validate**: Run `python3 scripts/validate_skill.py <skill-dir>` from this skill directory or an equivalent validator.
+7. **Test with real prompts**: Create 2-5 realistic prompts that should trigger the skill and at least 2 near-miss prompts that should not.
+8. **Iterate**: Improve from observed failures. Do not overfit to one example; generalize the underlying pattern.
 
-YAML frontmatter between `---` markers at the top of `SKILL.md`. Two fields are critical:
+## Frontmatter Rules
 
-- **`name`** (required by Agent Skills spec): Lowercase letters, numbers, hyphens only. Max 64 chars. Must match the parent directory name. No consecutive hyphens, no leading/trailing hyphens.
-- **`description`** (required): Max 1024 chars. This is how agents decide whether to activate the skill. Write in third person. Include both what the skill does and when to use it with specific trigger keywords.
-
-Optional fields (Claude Code extensions):
-
-- `metadata.kind`: Skill taxonomy — `leaf` (default), `orchestrator`, `router`, `specialist`, `delegate`
-- `metadata.invokes`: Space-delimited list of skills this skill calls
-- `metadata.called_by`: Space-delimited list of skills/workflows that call this one
-- `disable-model-invocation`: `true` to prevent automatic activation (manual `/name` only)
-- `user-invocable`: `false` to hide from `/` menu (background knowledge only)
-- `allowed-tools`: Space-delimited list of pre-approved tools
-- `context`: `fork` to run in an isolated subagent
-- `agent`: Subagent type when `context: fork` is set (`Explore`, `Plan`, `general-purpose`, or custom)
-- `model`: Override the model when skill is active
-- `argument-hint`: Autocomplete hint, e.g. `[issue-number]`
-- `hooks`: Hooks scoped to the skill lifecycle
-
-### Body Content
-
-The markdown body after frontmatter contains the skill instructions. Keep `SKILL.md` under 500 lines / ~5000 tokens. Move detailed reference material to separate files.
-
-## Writing Effective Skills
-
-### Description Is Everything for Discovery
-
-The `description` carries the entire burden of triggering. Agents load only `name` + `description` at startup. If the description doesn't convey when the skill is useful, the agent won't reach for it.
-
-- Write in **third person** ("Processes PDFs..." not "I can help you..." or "Use this to...")
-- Use **imperative trigger phrasing**: "Use when..." to tell the agent when to act
-- Include **specific keywords** users would naturally say, including indirect phrasings
-- Be **specific about scope**: what it does AND what it does not do
-- Keep under 1024 characters
-
-Good:
-
-```yaml
-description: >
-  Analyze CSV and tabular data files — compute summary statistics, add derived
-  columns, generate charts, and clean messy data. Use when the user has a CSV,
-  TSV, or Excel file and wants to explore, transform, or visualize the data,
-  even if they don't explicitly mention "CSV" or "analysis."
-```
-
-Bad:
-
-```yaml
-description: Helps with documents
-```
-
-### Conciseness — Context Is a Public Good
-
-The context window is shared with system prompt, conversation history, other skills, and the user's request. Every token in your skill competes for attention.
-
-- **Add what the agent lacks, omit what it knows.** Don't explain what a PDF is. Do explain your project's specific API patterns.
-- **Provide defaults, not menus.** Pick one recommended approach. Mention alternatives briefly only when needed.
-- **Challenge each piece:** "Would the agent get this wrong without this instruction?" If no, cut it.
-
-### Match Specificity to Fragility
-
-- **High freedom** (multiple valid approaches): Use descriptive guidelines
-- **Medium freedom** (preferred pattern exists): Use pseudocode or parameterized examples
-- **Low freedom** (fragile/destructive operations): Use exact commands, no deviation
-
-### Favor Procedures Over Declarations
-
-Teach the agent _how to approach_ a class of problems, not _what to produce_ for a specific instance. The approach should generalize even when individual details are specific.
-
-### Ground Skills in Real Expertise
-
-Do not generate skill content from general LLM knowledge alone. Effective skills come from:
-
-- Extracting patterns from real completed tasks (steps that worked, corrections made, context provided)
-- Synthesizing from project-specific artifacts (runbooks, schemas, code review comments, incident reports)
-- Iterating after real execution: run the skill, read traces, revise
-
-## Progressive Disclosure
-
-Structure skills so context loads incrementally:
-
-1. **Metadata** (~100 tokens): `name` + `description` — loaded at startup for all skills
-2. **Instructions** (<5000 tokens): Full `SKILL.md` body — loaded when skill activates
-3. **Resources** (as needed): Reference files — loaded only when required
-
-Reference supporting files from `SKILL.md` so the agent knows _when_ to load each:
-
-```markdown
-## References
-
-- For API error handling patterns, see [references/api-errors.md](references/api-errors.md)
-- For field mapping templates, see [assets/field-template.json](assets/field-template.json)
-```
-
-Keep file references **one level deep** from `SKILL.md`. Avoid nested reference chains.
-
-For reference files over 100 lines, include a table of contents at the top.
-
-## String Substitutions
-
-Skills support dynamic values in content:
-
-- `$ARGUMENTS` — all arguments passed when invoking
-- `$ARGUMENTS[N]` or `$N` — positional argument (0-based)
-- `${CLAUDE_SESSION_ID}` — current session ID
-- `${CLAUDE_SKILL_DIR}` — directory containing the skill's `SKILL.md`
-
-Dynamic context injection: `` !`command` `` runs shell commands before content is sent to the agent. Output replaces the placeholder.
-
-## Creation Procedure
-
-1. **Create directory**: `.agents/skills/<name>/`
-2. **Write `SKILL.md`** with frontmatter and body following the structure above
-3. **Add supporting files** if needed (references, scripts, assets)
-4. **Update index**: Add the new skill to `.agents/skills/README.md` if it exists
-5. **Update AGENTS.md**: If the skill should appear in the Skill Taxonomy or session skill list, add it to `AGENTS.md` under the appropriate section
-6. **Test**: Invoke the skill against a real task. Check that it triggers on relevant prompts and does not trigger on irrelevant ones
-
-### Structural Template
+Use the portable minimum by default:
 
 ```yaml
 ---
 name: <kebab-case-name>
 description: >
-  <What it does>. Use when <trigger conditions>,
-  <additional trigger keywords or contexts>.
-metadata:
-  kind: leaf
+  <What the skill does>. Use when <specific trigger contexts and user phrasing>.
 ---
-
-# <Title>
-
-<One-paragraph overview of what the skill does and the approach it takes.>
-
-## Procedure
-
-1. **Step one**: ...
-2. **Step two**: ...
-
-## Guardrails
-
-- <Constraint or boundary>
-- <What the skill must NOT do>
-
-## Related Skills
-
-- `<related-skill-name>`
 ```
 
-## Patterns Worth Using
+- `name` must match the folder name, use lowercase letters/digits/hyphens, avoid leading/trailing hyphens, avoid repeated hyphens, and stay under 64 characters.
+- `description` is the trigger surface. Include both capability and when to use it. Name specific artifacts, file types, platforms, and user phrasing that should trigger the skill.
+- Keep descriptions under 1024 characters. Front-load the most important trigger words.
+- Avoid platform-only frontmatter in the default path. Put platform-specific behavior in references or add it only when the user asks.
 
-- **Checklists** for multi-step workflows — helps the agent track progress
-- **Validation loops** — do work, run validator, fix, repeat until clean
-- **Plan-validate-execute** — create intermediate plan, validate against source of truth, then execute
-- **Templates** for output format — agents pattern-match concrete structures better than prose descriptions
-- **Input/output examples** — show expected behavior, like few-shot prompting
-- **Bundled scripts** — if the agent reinvents the same logic each run, write a tested script once
+## Writing Guidance
 
-## Guardrails
+- Make the skill actionable, not narrative. Write procedures, decision rules, templates, and guardrails.
+- Explain why important constraints exist so the receiving agent can generalize.
+- Match specificity to risk: broad guidance for judgment-heavy work, exact commands for fragile workflows.
+- Put long examples, API docs, schemas, and model-specific advice in references. Link each reference from `SKILL.md` with clear loading criteria.
+- Do not include general docs such as README, changelog, installation notes, or design-history files inside a skill unless they are actively used by the skill.
+- Prefer stable commands and local scripts over instructions that make every agent reinvent the same code.
+- Keep all paths with forward slashes.
 
-- **No narratives**: Keep it actionable. No "In this session we decided..."
-- **No time-sensitive content**: Use "current method" / "legacy method" sections instead of dates
-- **Consistent terminology**: Pick one term per concept and use it throughout
-- **No deeply nested references**: All reference files link directly from `SKILL.md`
-- **Forward slashes only**: Use `scripts/helper.py`, not `scripts\helper.py`
-- **Preserve project conventions**: Skills must not contradict `AGENTS.md` or project norms
+## Description Checklist
 
-## Reference
+Before finalizing `description`, check:
+
+- Would an agent know when to use this skill from `name` and `description` alone?
+- Does it include common user phrases, indirect phrasing, and relevant file/tool names?
+- Does it avoid claiming adjacent work that belongs to another skill?
+- Does it include near-boundaries where the skill should not trigger if those boundaries matter?
+- Is it concise enough to survive truncation in a large skill catalog?
+
+## Review Checklist
+
+Before declaring the skill done:
+
+- `SKILL.md` has valid frontmatter and a body that can stand alone.
+- Every linked `references/` file exists and is directly linked from `SKILL.md`.
+- Every script is executable or has a clear command, and representative scripts have been run.
+- Placeholder text has been removed.
+- Optional platform metadata matches the skill content.
+- At least one realistic prompt has been mentally or actually run against the skill.
+- The validator passes.
+
+## Useful Commands
+
+From this skill directory:
+
+```bash
+python3 scripts/init_skill.py prompt-craft --path ../../skills --resources references
+python3 scripts/validate_skill.py ../../skills/prompt-craft
+```
+
+From the repo root:
+
+```bash
+DISABLE_TELEMETRY=1 npx --yes skills add . --list
+```
+
+## Sources
 
 - Agent Skills Specification: https://agentskills.io/specification
-- Best Practices for Skill Creators: https://agentskills.io/skill-creation/best-practices
-- Optimizing Skill Descriptions: https://agentskills.io/skill-creation/optimizing-descriptions
-- Using Scripts in Skills: https://agentskills.io/skill-creation/using-scripts
-- Claude Code Skills: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview
-- Claude Skill Authoring Best Practices: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-- OpenAI Codex Skills: https://developers.openai.com/codex/skills/
+- Anthropic skill creator: https://github.com/anthropics/skills/tree/main/skills/skill-creator
+- OpenAI skill creator: https://github.com/openai/skills/tree/main/skills/.system/skill-creator
+- Codex skills: https://developers.openai.com/codex/skills/
+- Claude Code skills: https://code.claude.com/docs/en/skills
+- OpenCode skills: https://opencode.ai/docs/skills/
+- skills CLI: https://www.skills.sh/docs/cli

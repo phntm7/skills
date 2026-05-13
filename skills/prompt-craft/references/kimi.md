@@ -1,19 +1,21 @@
 # Kimi Prompting Notes
 
-Use this reference for Kimi models, especially Kimi K2.6. Kimi's general prompt best-practice page is not deeply model-specific, so combine these notes with current model capability docs when the exact Kimi version matters.
+Last verified: 2026-05-13
+
+## Scope
+
+Use this reference for Kimi models, especially Kimi K2.6. Kimi's public prompt guidance is mostly general prompting advice, so this file intentionally stays short and avoids padding with universal rules.
 
 ## Kimi K2.6
 
 - Kimi K2.6 documentation highlights improved long-context coding stability; prompt large coding tasks with explicit scope, target files, and completion criteria.
-- Use clear instructions and include enough context that the model does not need to guess.
-- Assign a role when domain expertise or response framing matters.
-- Use delimiters such as XML tags, triple quotes, and headings to separate source material, examples, and instructions.
-- Define the steps needed for fragile workflows.
-- Provide examples when the desired style or output format is hard to describe.
-- Specify output length by paragraphs, bullets, or sections rather than exact word counts.
-- For grounded answers, provide reference text and state how to respond when the answer is not in the reference.
-- For long-running conversations, summarize or filter previous turns before the context becomes noisy.
-- For long documents, chunk, summarize, and recursively aggregate summaries.
+- Kimi K2.6 supports large-context coding workflows; label source files, modules, logs, and acceptance criteria clearly.
+- Use the universal guidance in `SKILL.md` for delimiters, examples, output length, grounding, and long-document summarization.
+
+## Known Gotchas
+
+- No deeply model-specific Kimi K2.6 prompt guide was found in the public docs checked for this skill.
+- Verify current Kimi capability docs before adding version-specific API advice.
 
 ## Sources
 

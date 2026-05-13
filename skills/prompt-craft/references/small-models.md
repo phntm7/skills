@@ -1,5 +1,9 @@
 # Smaller Model Prompting Notes
 
+Last verified: 2026-05-13
+
+## Scope
+
 Use this reference for mini, nano, flash, local, and cost-optimized models.
 
 ## General Rules
@@ -13,27 +17,6 @@ Use this reference for mini, nano, flash, local, and cost-optimized models.
 - Avoid relying on unstated conventions, cross-file inference, or broad "be smart" instructions.
 - Add verification steps only when they are simple and concrete; complex self-critique can waste tokens or degrade answers.
 - Route ambiguous tasks, multi-hop research, hard planning, large refactors, and high-impact decisions to stronger models.
-
-## Good Default Pattern
-
-```text
-# Task
-[one sentence]
-
-# Input
-[labeled input]
-
-# Rules
-- [critical rule]
-- [edge case]
-- [clarification/abstention behavior]
-
-# Output
-[exact format]
-
-# Example
-[one representative example]
-```
 
 ## When to Escalate
 

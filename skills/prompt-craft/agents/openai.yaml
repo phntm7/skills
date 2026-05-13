@@ -1,4 +1,4 @@
 interface:
   display_name: "Prompt Craft"
   short_description: "Write and tune prompts for modern models."
-  default_prompt: "Use prompt-craft to create or review this prompt, loading model-specific guidance only when relevant."
+  default_prompt: "Improve this prompt or tune it for a specific model."
