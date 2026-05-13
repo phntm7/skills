@@ -1,0 +1,4 @@
+interface:
+  display_name: "AGENTS.md Init"
+  short_description: "Create AGENTS.md and CLAUDE.md project instructions."
+  default_prompt: "Use $agents-md-init to analyze this repo and initialize AGENTS.md plus a CLAUDE.md symlink."
