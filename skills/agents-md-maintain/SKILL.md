@@ -32,6 +32,13 @@ scratch, use the initialization workflow instead.
 Read [references/maintenance-rubric.md](references/maintenance-rubric.md) when
 you need the quality rubric, cleanup rules, report format, or source links.
 
+## Related Skills
+
+When evaluating phrasing quality or rewriting rules, also use the `prompt-craft`
+skill for general prompting principles: motivating constraints, "when X, do Y"
+rules, output contracts, and anti-patterns. `AGENTS.md` and `CLAUDE.md` are
+additions to the system prompt, so prompting guidance applies.
+
 ## Maintenance Workflow
 
 1. **Discover instruction files**

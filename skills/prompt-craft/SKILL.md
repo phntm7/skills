@@ -144,6 +144,8 @@ Before finalizing a prompt, check:
 
 ## AGENTS.md, CLAUDE.md, and Skill Files
 
+To initialize `AGENTS.md` and `CLAUDE.md` for a project, also use the `agents-md-init` skill; to audit, refactor, or sync existing files, use `agents-md-maintain`. To create or refine a `SKILL.md`, use `skill-create`. The rules below apply universally.
+
 For repository or agent instruction files:
 
 - Put durable repo behavior in `AGENTS.md` or `CLAUDE.md`; put one-task instructions in chat; put reusable workflows in skills.

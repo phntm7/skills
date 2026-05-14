@@ -32,6 +32,13 @@ Read [references/instruction-file-practices.md](references/instruction-file-prac
 when you need the quality rubric, recommended sections, import/symlink rules, or
 source links.
 
+## Related Skills
+
+When phrasing rules in the file, also use the `prompt-craft` skill for general
+prompting principles: motivating constraints, "when X, do Y" rules, output
+contracts, and anti-patterns. `AGENTS.md` and `CLAUDE.md` are additions to the
+system prompt, so prompting guidance applies.
+
 ## Initialization Workflow
 
 1. **Discover current state**

@@ -18,6 +18,13 @@ Use this skill to create portable skills that work across agents instead of lock
 - For Codex, Claude Code, OpenCode, and `skills.sh` compatibility notes, read [references/platform-notes.md](references/platform-notes.md).
 - For testing, trigger evals, and iteration, read [references/evaluation.md](references/evaluation.md).
 
+## Related Skills
+
+When writing the skill `description`, the `SKILL.md` body, or any other prose
+the host agent will read, also use the `prompt-craft` skill for prompting
+principles: front-loading trigger words, output contracts, and anti-patterns.
+`SKILL.md` is LLM-facing prose.
+
 ## Default Output Location
 
 In this repo, create or update skills under `skills/<skill-name>/`. Do not create duplicate canonical copies under `.agents/skills`, `.claude/skills`, or `.opencode/skills` unless the user asks for a platform-local install test.
