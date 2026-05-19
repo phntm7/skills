@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skills Manage"
+  short_description: "Drive the skills CLI to install, list, update, or scaffold."
+  default_prompt: "Use $skills-manage to install or update Agent Skills via the local skills CLI."
