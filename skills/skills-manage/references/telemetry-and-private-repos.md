@@ -9,7 +9,7 @@ Two environment variables disable telemetry, checked since `skills@1.5.6`:
 - `DISABLE_TELEMETRY=1`
 - `DO_NOT_TRACK=1` (broader, console-wide convention; see https://donottrack.sh/)
 
-CI environments disable telemetry automatically.
+The README claims CI environments disable telemetry automatically. In `skills@1.5.7` the code only adds a `ci=1` query parameter and still sends the event unless `DISABLE_TELEMETRY` or `DO_NOT_TRACK` is set. Until upstream code matches the README, set the env var explicitly in CI.
 
 ### How to apply
 
@@ -21,13 +21,17 @@ There is no `skills telemetry disable` subcommand in the current CLI help; the e
 
 ## Private Repos
 
-`skills add` resolves the source repo through git. For private GitHub repos:
+`skills add` shallow-clones the source repo via the local `git` binary with `GIT_TERMINAL_PROMPT=0`. Tokens from `GITHUB_TOKEN`/`GH_TOKEN` are **not** injected into the clone command — they are only used by the CLI's GitHub API tree lookups (and as an API rate-limit fallback). For the clone to succeed against a private repo, the user's git environment must already be authenticated.
 
-- **SSH** (preferred when keys are already loaded): use `git@github.com:<owner>/<repo>.git`. Confirm with `ssh -T git@github.com` if auth is uncertain.
-- **HTTPS with token**: set `GITHUB_TOKEN` or `GH_TOKEN` in the environment; the CLI's git operations will pick them up.
-- **`gh` auth**: if `gh auth status` shows an active token, git operations via the `https://github.com/...` URL will succeed without extra setup.
+Recommended auth setup for private GitHub repos, in order of robustness:
 
-### Recommended pattern for this Mac
+- **SSH** (preferred when keys are already loaded): use `git@github.com:<owner>/<repo>.git`. Verify with `ssh -T git@github.com` and `ssh-add -l`.
+- **`gh auth setup-git`**: configures git to use the GitHub CLI as a credential helper for HTTPS URLs. Run `gh auth login` first if not already authenticated, then `gh auth setup-git`. After that, HTTPS clones to GitHub succeed without prompting.
+- **Git credential helper**: store credentials with `git config --global credential.helper osxkeychain` (macOS) or `manager` (cross-platform) and ensure `git credential fill` returns a valid token for `github.com`.
+
+For GitHub API rate-limit relief when adding from a public repo subpath, export `GITHUB_TOKEN` or `GH_TOKEN`. This does not affect clone auth — only API metadata reads.
+
+### Recommended private-repo pattern
 
 ```bash
 DISABLE_TELEMETRY=1 skills add git@github.com:<owner>/<repo>.git \
@@ -47,7 +51,7 @@ DISABLE_TELEMETRY=1 skills add git@github.com:<owner>/<repo>.git \
 - A CI runner only has `GITHUB_TOKEN`.
 - The repo is fetched through a corporate proxy that blocks SSH.
 
-In those cases, use the HTTPS URL and rely on `GITHUB_TOKEN`/`GH_TOKEN` or `gh` auth.
+In those cases, use the HTTPS URL with a git credential helper or `gh auth setup-git` so plain `git clone https://github.com/...` works non-interactively. On CI, write `GITHUB_TOKEN` into `~/.git-credentials` (or use the `x-access-token` helper pattern) before running `skills add`. Exporting `GITHUB_TOKEN` alone is not sufficient — the CLI does not forward it to the clone.
 
 ## Verification
 

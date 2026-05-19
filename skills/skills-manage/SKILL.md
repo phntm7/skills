@@ -36,7 +36,8 @@ Pick the smallest command that fits the request.
 | Preview without installing | `skills add <source> --list` |
 | Install one named skill | `skills add <source> --skill <name>` |
 | Install everything from a repo | `skills add <source> --all` (alias for `--skill '*' --agent '*' -y`) |
-| Install to all detected agents | `skills add <source> -a '*'` |
+| Install to all detected agents | omit `-a` (the CLI auto-detects installed agents) |
+| Install to every supported agent | `skills add <source> -a '*'` (writes to all known agents, not only detected ones) |
 | Install to specific agents | `skills add <source> -a claude-code codex` |
 | Make it global | append `-g` |
 | Copy instead of symlink | append `--copy` |
@@ -60,7 +61,7 @@ Source forms accepted by `add`:
 - **Project (default)**: installs under the project's agent-specific dirs (e.g. `.claude/skills/`, `.agents/skills/`). Use when the skill should ship with the repo for teammates.
 - **Global (`-g`)**: installs under user-level dirs (e.g. `~/.claude/skills/`, `~/.agents/skills/`). Use for personal tooling that should apply everywhere.
 
-If the user does not specify scope and the repo already contains an agent skills directory or a `skills-lock.json`, default to project. Otherwise default to global and confirm.
+Follow the CLI default (project) unless the user explicitly asks for a personal or machine-wide install, in which case pass `-g`. When intent is ambiguous, ask before defaulting to global — global installs write to shared user-level state.
 
 ## Agent Targeting
 

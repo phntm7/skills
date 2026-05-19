@@ -10,12 +10,12 @@ The `skills` CLI claims support for 55+ agents. The flag passed to `-a` is the a
 | `codex` | OpenAI Codex CLI | `.agents/skills/` | `~/.codex/skills/` |
 | `cursor` | Cursor | `.agents/skills/` | `~/.cursor/skills/` |
 | `opencode` | OpenCode | `.agents/skills/` | `~/.config/opencode/skills/` |
-| `cline` | Cline (VSCode) | `.agents/skills/` | `~/.agents/skills/` |
-| `windsurf` | Windsurf | `.agents/skills/` | `~/.windsurf/skills/` |
-| `continue` | Continue.dev | `.agents/skills/` | `~/.continue/skills/` |
+| `cline` | Cline | `.agents/skills/` | `~/.agents/skills/` |
+| `windsurf` | Windsurf | `.windsurf/skills/` | `~/.codeium/windsurf/skills/` |
+| `continue` | Continue.dev | `.continue/skills/` | `~/.continue/skills/` |
 | `gemini-cli` | Gemini CLI | `.agents/skills/` | `~/.gemini/skills/` |
-| `warp` | Warp | `.agents/skills/` | `~/.warp/skills/` |
-| `copilot` | GitHub Copilot | `.agents/skills/` | `~/.copilot/skills/` |
+| `warp` | Warp | `.agents/skills/` | `~/.agents/skills/` |
+| `github-copilot` | GitHub Copilot | `.agents/skills/` | `~/.copilot/skills/` |
 
 Paths and slugs can change between releases. Verify with `skills list -g --json` against a known install before trusting them in scripts.
 
