@@ -1,16 +1,16 @@
 ---
-name: workflow-packaging-audit
+name: workflow-audit
 description: >
   Audit recent coding-agent history (Codex, Claude Code, OpenCode, Factory
   Droid, Pi) to find repeated manual workflows worth packaging as skills,
-  subagents, commands, automations, or memory/instruction updates. Use when the
-  user asks to scan agent sessions, find recurring patterns, identify
-  automation opportunities, decide what should become a skill or command,
-  review what to extract from past chats, or check for repeated workflows
-  across Codex/Claude Code that could be reused.
+  subagents, commands, automations, or memory/instruction updates. Use when
+  the user asks to audit agent workflows, scan agent sessions, find recurring
+  patterns, identify automation or skill opportunities, decide what should
+  become a skill or command, review what to extract from past chats, or
+  check for repeated workflows across Codex/Claude Code that could be reused.
 ---
 
-# Workflow Packaging Audit
+# Workflow Audit
 
 Use this skill to inspect local agent session history, memory, and existing
 assets, then recommend (or create) the smallest reusable artifact for repeated

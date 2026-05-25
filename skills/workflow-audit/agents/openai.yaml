@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow Audit"
+  short_description: "Find repeated agent workflows worth packaging."
+  default_prompt: "Use $workflow-audit to scan my recent Codex and Claude Code history for repeated workflows worth packaging."
