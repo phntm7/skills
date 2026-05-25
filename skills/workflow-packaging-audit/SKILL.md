@@ -24,9 +24,17 @@ first; do not edit files until the user approves. Switch modes only when the
 user explicitly says so:
 
 - `fully automatic` — scan, shortlist, then create or extend only
-  high-confidence missing local assets.
+  high-confidence missing **project-local** assets (files under the project
+  root: `./.claude/`, `./.codex/`, `./.agents/`, `./.opencode/`, `./.factory/`,
+  `./.pi/`, project `AGENTS.md`/`CLAUDE.md`, project skills/commands/agents).
 - `user-in-the-loop` — scan, shortlist, recommend. Edit only after approval.
 - `recommendations only` — stop after the shortlist and final report.
+
+Writes to user-level or global assets (`~/.codex/`, `~/.claude/`,
+`~/.config/opencode/`, `~/.factory/`, `~/.pi/`, global instruction files,
+globally installed skills/commands) always require explicit approval, even in
+fully automatic mode, unless the user pre-authorized global writes in this
+session.
 
 Creating or modifying scheduled, background, or external automations (cron,
 LaunchAgents, GitHub Actions, calendar/reminder hooks, Linear automations)
@@ -76,7 +84,8 @@ Always check, for each selected agent:
 - existing local skills, commands, custom agents/subagents/droids;
 - project and global `AGENTS.md`/`CLAUDE.md` guidance;
 - skills available in the current environment, especially skill creation,
-  AGENTS.md/CLAUDE.md maintenance, prompt-craft, and documentation edits.
+  AGENTS.md/CLAUDE.md maintenance, prompt-craft, documentation edits, and
+  `skills-manage` for inventorying installed skills via the `skills` CLI.
 
 Use those skills and the project's existing patterns when drafting or editing
 assets. For exact paths and history shapes, load
@@ -120,16 +129,44 @@ De-emphasize or ignore:
 
 ## Existing Coverage
 
-Before recommending a new asset, search relevant coverage:
+Before recommending a new asset, search **specific asset and config
+locations**, not whole agent home directories. Treat broader roots only as
+discovery boundaries to enumerate the locations below; do not recursively
+read transcripts, caches, or logs under them.
 
-- project: `AGENTS.md`, `CLAUDE.md`, `.agents/`, `.codex/`, `.claude/`,
-  `.opencode/`, `.factory/`, `.pi/`;
-- global: `~/.codex/skills/`, `~/.agents/skills/`, `~/.claude/`,
-  `~/.config/opencode/`, `~/.factory/`, `~/.pi/agent/`;
-- project and global command directories;
-- custom agents, subagents, droids;
-- automation definitions: `$CODEX_HOME/automations/`, cron, LaunchAgents,
-  `.github/workflows/`, task runners, configured reminders.
+Project:
+
+- `AGENTS.md`, `CLAUDE.md`, `AGENTS.override.md`, `CLAUDE.local.md`;
+- `.claude/skills/`, `.claude/commands/`, `.claude/agents/`,
+  `.claude/rules/`, `.claude-plugin/`;
+- `.codex/skills/`, `.codex/commands/`, `.codex-plugin/`;
+- `.agents/skills/`, `.agents/plugins/`;
+- `.opencode/agent/`, `.opencode/commands/`, `opencode.json(c)`;
+- `.factory/droids/`, `.factory/skills/`, `.factory/commands/`,
+  `.factory/mcp.json`, `.factory/config.json`, `.factory/settings.json`;
+- `.pi/settings.json`.
+
+Global (enumerate listed subdirs only; do not crawl the parents):
+
+- `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/commands/`,
+  `~/.claude/agents/`, `~/.claude/plugins/`;
+- `$CODEX_HOME/AGENTS.md`, `$CODEX_HOME/skills/`, `$CODEX_HOME/commands/`,
+  `$CODEX_HOME/automations/`;
+- `~/.agents/skills/`;
+- `~/.config/opencode/AGENTS.md`, `~/.config/opencode/agent/`,
+  `~/.config/opencode/commands/`;
+- `~/.factory/AGENTS.md`, `~/.factory/droids/`, `~/.factory/skills/`,
+  `~/.factory/commands/`, `~/.factory/mcp.json`, `~/.factory/settings.json`;
+- `~/.pi/agent/` extension and skill manifests.
+
+External automation surfaces (inspect only when relevant):
+
+- cron, LaunchAgents/LaunchDaemons, `.github/workflows/`, task runners,
+  configured reminder/calendar tools, Linear automations.
+
+Use `skills-manage` (the `skills` CLI wrapper) when an inventory of installed
+skills across agents is helpful — it avoids hand-crawling the directories
+above.
 
 Include a short "searched locations" note in the final report.
 
@@ -189,17 +226,22 @@ content.
 
 ## Workflow
 
-1. Confirm mode, selected agents, date range, and project/global scope. If the
-   user did not specify, apply the defaults above and state them in the
-   output.
+1. Resolve mode, selected agents, date range, and project/global scope from
+   the user's request. If unspecified, apply the defaults above and state
+   them in the output. Ask only when scope is genuinely ambiguous or when a
+   side effect would require approval that is not yet given.
 2. Read applicable `AGENTS.md`/`CLAUDE.md` and relevant project patterns.
 3. Use available skills for prompt composition, skill creation,
    instruction-file maintenance, and asset edits.
 4. Locate required evidence sources using
    [references/agent-locations.md](references/agent-locations.md). Note which
    optional sources are present.
-5. Build a compact evidence index using the transcript parsing rules. Do not
-   load full transcripts; sample summaries and metadata first.
+5. Build a compact evidence index using the transcript parsing rules. Start
+   from metadata, user prompts, and summaries (compacted, task, and final).
+   When summaries are absent, too thin, or ambiguous, fall back to bounded
+   message windows or excerpts — only around the candidate signals and only
+   for candidate verification, not for bulk reading. Never load full
+   transcripts.
 6. Identify repeated candidate workflows across coding, research, writing,
    planning, communication, operations, analysis, personal administration,
    and agent setup/maintenance.
@@ -266,3 +308,5 @@ Near miss:
 - `agents-md-maintain` — when the right form is a memory/instruction update.
 - `prompt-craft` — when writing trigger descriptions, command prompts, or
   subagent system prompts for created assets.
+- `skills-manage` — when inventorying installed skills or checking
+  install-state across agents via the `skills` CLI.

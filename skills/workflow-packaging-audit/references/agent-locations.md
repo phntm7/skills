@@ -1,10 +1,20 @@
 # Agent History And Memory Locations
 
+Last verified: 2026-05-25.
+
 Use these as known or suspect paths. Verify what exists locally before
 assuming any source is available. Treat absences as data — note them in the
 final report rather than failing.
 
+Each agent block includes a **Provenance** line summarizing where the paths
+come from and how confident they are. Re-verify before relying on any path
+when the verification date is stale or the agent has shipped a major release
+since.
+
 ## Codex
+
+Provenance: high confidence. Sourced from public Codex docs and the
+`$CODEX_HOME` layout used by current Codex CLI releases. Verified 2026-05-25.
 
 **Primary home**
 
@@ -41,6 +51,9 @@ final report rather than failing.
 
 ## Claude Code
 
+Provenance: high confidence. Sourced from public Claude Code docs (memory
+scopes, project history under `~/.claude/projects/`). Verified 2026-05-25.
+
 **Primary home**
 
 - `~/.claude`
@@ -70,6 +83,10 @@ final report rather than failing.
 
 ## OpenCode
 
+Provenance: medium confidence. Sourced from OpenCode docs and conventional
+XDG locations; storage layout has changed across releases. Re-verify session
+DB and storage paths before recursive reads. Verified 2026-05-25.
+
 **Primary locations**
 
 - `~/.config/opencode/opencode.json`
@@ -98,6 +115,12 @@ final report rather than failing.
   memory servers.
 
 ## Factory Droid
+
+Provenance: low-to-medium confidence. Paths inferred from Factory's public
+documentation and community-reported layouts (droids, skills, commands, MCP
+config). Session export and history paths vary by Factory version and
+installed integrations (SpecStory, Entire). Verify locally before reading.
+Verified 2026-05-25.
 
 **Primary locations**
 
@@ -131,6 +154,11 @@ final report rather than failing.
 - custom droids and skills
 
 ## Pi Coding Agent
+
+Provenance: low confidence. Pi is comparatively young; session, settings, and
+memory-plugin paths are derived from extension docs and example
+configurations rather than a stable public spec. Treat all listed paths as
+suspect and verify locally before reading or writing. Verified 2026-05-25.
 
 **Primary home**
 
