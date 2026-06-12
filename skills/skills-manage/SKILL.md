@@ -2,18 +2,19 @@
 name: skills-manage
 description: >
   Manage Agent Skills with the `skills` CLI: list, find, add, install, remove,
-  uninstall, update, upgrade, sync, and scaffold SKILL.md skills across Claude
-  Code, Codex, Cursor, OpenCode, Cline, and 50+ other agents. Use when the user
-  asks to add or remove a skill, browse installed skills, search for skills,
-  upgrade skills, switch between global and project scope, target specific
-  agents with `-a`, install from a GitHub repo or local path, scaffold a new
-  skill with `skills init`, or restore from `skills-lock.json`. Call the CLI
-  as `skills`, not `npx skills`; the binary is expected to be installed locally.
+  uninstall, update, upgrade, sync, scaffold, and run SKILL.md skills across
+  Claude Code, Codex, Cursor, OpenCode, Cline, and 70+ other agents. Use when
+  the user asks to add or remove a skill, browse installed skills, search for
+  skills, upgrade skills, run or preview a skill without installing it, switch
+  between global and project scope, target specific agents with `-a`, install
+  from a GitHub repo or local path, scaffold a new skill with `skills init`, or
+  restore from `skills-lock.json`. Call the CLI as `skills`, not `npx skills`;
+  the binary is expected to be installed locally.
 ---
 
 # Skills Manage
 
-Use this skill to drive the `skills` CLI for installing, removing, listing, searching, updating, syncing, or scaffolding Agent Skills. The CLI binary is installed locally; invoke it as `skills`, never `npx skills`.
+Use this skill to drive the `skills` CLI for installing, removing, listing, searching, updating, running, syncing, or scaffolding Agent Skills. The CLI binary is installed locally; invoke it as `skills`, never `npx skills`.
 
 ## Preflight
 
@@ -32,6 +33,7 @@ Pick the smallest command that fits the request.
 | Filter list by agent | `skills ls -a claude-code` |
 | Machine-readable output | `skills ls --json` |
 | Search the public catalog | `skills find [query]` |
+| Use a skill once without installing | `skills use <source>@<skill>` (prints the prompt; `-a` launches an agent) |
 | Install a published package | `skills add <owner>/<repo>` |
 | Preview without installing | `skills add <source> --list` |
 | Install one named skill | `skills add <source> --skill <name>` |
@@ -56,6 +58,17 @@ Source forms accepted by `add`:
 - SSH: `git@github.com:owner/repo.git`
 - Local path: `.` or `./relative/path`
 
+## Run a Skill Without Installing
+
+`skills use <source>[@<skill>]` resolves a skill the same way `add` does, writes it to a temporary directory, and prints only the generated prompt to stdout. It adds nothing to your agents or project — use it for a one-off when the user wants a skill's guidance now without installing it.
+
+- Pipe the prompt into an agent: `skills use vercel-labs/agent-skills@web-design-guidelines | claude`
+- Or select a skill and launch one supported agent interactively (`claude-code`, `codex`) with `-a`: `skills use vercel-labs/agent-skills --skill web-design-guidelines --agent claude-code`
+- `--full-depth` searches nested directories, same as `add`.
+- Accepts the same source forms as `add` (shorthand, URL, subpath, SSH, local path).
+
+Prefer `skills use` over `add` when the skill is needed temporarily; reach for `add` only when it should persist for future sessions.
+
 ## Scope
 
 - **Project (default)**: installs under the project's agent-specific dirs (e.g. `.claude/skills/`, `.agents/skills/`). Use when the skill should ship with the repo for teammates.
@@ -68,7 +81,7 @@ Follow the CLI default (project) unless the user explicitly asks for a personal 
 - Omit `-a` to install to all agents the CLI detects on the system.
 - Use `-a` to target specific agents. Multiple agents can be passed: `-a claude-code codex cursor`.
 - Use `-a '*'` to force-install to every supported agent regardless of detection.
-- Common flag names: `claude-code`, `codex`, `cursor`, `opencode`, `cline`, `windsurf`, `continue`, `gemini-cli`, `warp`, `copilot`. Full matrix in [references/agents-matrix.md](references/agents-matrix.md).
+- Common flag names: `claude-code`, `codex`, `cursor`, `opencode`, `cline`, `windsurf`, `continue`, `gemini-cli`, `warp`, `github-copilot`, `openclaw`. Full matrix in [references/agents-matrix.md](references/agents-matrix.md).
 
 ## Examples
 
@@ -82,6 +95,9 @@ skills add vercel-labs/agent-skills -g -a claude-code codex -y
 
 # Preview what a repo offers without writing files
 skills add owner/repo --list
+
+# Run a skill once without installing (prints the prompt to stdout)
+skills use vercel-labs/agent-skills@web-design-guidelines | claude
 
 # Install one skill from a monorepo into the current project
 skills add owner/repo --skill frontend-design -a claude-code
@@ -127,6 +143,7 @@ Spot-check that the expected skill directory exists for at least one targeted ag
 - If `--copy` was used at install time, future `update` runs may not propagate symlink-style fixes; warn the user.
 - Do not edit installed skill files in the destination directories when symlinks are in use — edits should land in the source repo and propagate. With `--copy`, destination edits are local-only and `update` will overwrite them.
 - When the user wants to author a new skill (not just install one), prefer the `skill-create` skill for the authoring workflow and use `skills init` only as the scaffold step.
+- When `skills use` resolves unverified OpenClaw community skills, the CLI refuses unless `--dangerously-accept-openclaw-risks` is passed. Only pass it when the user explicitly accepts running unvetted community skill content.
 
 ## Related Skills
 

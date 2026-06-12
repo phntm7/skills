@@ -1,6 +1,6 @@
 # Agents Matrix
 
-The `skills` CLI claims support for 55+ agents. The flag passed to `-a` is the agent slug shown below. Project install paths are written under the current repo; global paths are written under the user's home.
+The `skills` CLI claims support for 70+ agents (71 at CLI v1.5.11). The flag passed to `-a` is the agent slug shown below. Project install paths are written under the current repo; global paths are written under the user's home.
 
 ## Common Flags
 
@@ -16,6 +16,7 @@ The `skills` CLI claims support for 55+ agents. The flag passed to `-a` is the a
 | `gemini-cli` | Gemini CLI | `.agents/skills/` | `~/.gemini/skills/` |
 | `warp` | Warp | `.agents/skills/` | `~/.agents/skills/` |
 | `github-copilot` | GitHub Copilot | `.agents/skills/` | `~/.copilot/skills/` |
+| `openclaw` | OpenClaw | `skills/` | `~/.openclaw/skills/` |
 
 Paths and slugs can change between releases. Verify with `skills list -g --json` against a known install before trusting them in scripts.
 
