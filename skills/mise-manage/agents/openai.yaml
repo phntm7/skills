@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mise Manage"
+  short_description: "Operate and debug mise tools, backends, updates, and warnings."
+  default_prompt: "Use $mise-manage to diagnose mise warnings, update tool config, or manage mise-installed CLIs."
