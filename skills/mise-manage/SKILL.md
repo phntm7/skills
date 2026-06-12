@@ -1,240 +1,237 @@
 ---
 name: mise-manage
 description: >
-  Manage mise-en-place tool versions, mise.toml files, global ~/.config/mise/config.toml, backends, installs, updates, shims, and warnings. Use when the user asks about mise, mise up/install/use/exec, minimum_release_age, prereleases, npm/pipx/aqua/asdf/github backends, lifecycle-script warnings, stale version metadata, or failed tool resolution.
+  Manage mise-en-place (mise) dev tools, runtimes, and CLIs globally and per
+  project: mise.toml and ~/.config/mise/config.toml, config precedence, mise
+  use/install/exec/run/up/upgrade/latest/ls/outdated, backends (core, aqua,
+  github, npm, pipx, cargo, go, ubi, asdf, vfox, http), lockfiles (mise.lock),
+  env vars and secrets, tasks, shims vs activate, config trust, the registry,
+  and supply-chain controls (minimum_release_age, prereleases, verification).
+  Use when the user mentions mise, asks to install or pin or upgrade a tool,
+  add a tool to a project or global config, debug a mise warning or failed
+  resolution, choose a backend, set up lockfiles, or manage mise env/tasks.
 ---
 
 # Mise Manage
 
-Use this skill to operate and debug `mise` as a tool-version manager. Prefer dry runs and config inspection before changing shared global state.
+`mise` (mise-en-place) is a polyglot tool-version manager, environment manager, and task runner. Use this skill to install, pin, upgrade, and debug tools globally and per project. Prefer config inspection and dry runs before mutating shared global state.
+
+## Mental Model
+
+- **Backends** are the package ecosystems mise installs from: `core` (node, python, …), `aqua`, `github`, `npm`, `pipx`, `cargo`, `go`, `ubi`, `asdf`, `vfox`, `http`, and more. A tool key is `backend:name` (e.g. `npm:prettier`); registry shorthands like `node` or `ripgrep` resolve to a default backend.
+- **Config** is hierarchical TOML. Project config lives in `mise.toml`; global config in `~/.config/mise/config.toml`. Files closer to the working directory override parents; sections merge (see Config Files).
+- **Activation modes** decide how tools reach `PATH`:
+  - `mise activate` (shell hook) — interactive shells; updates `PATH`/env on prompt and `cd`.
+  - shims (`mise activate --shims`) — CI, IDEs, scripts; symlinks that resolve versions on call. Shims do not support every feature of `activate` (see [shims](https://mise.jdx.dev/dev-tools/shims.html)).
+  - none — prefix commands with `mise exec --` / `mise x --`, or run via `mise run`.
+- **Trust**: mise refuses to parse a `mise.toml` that may run code (env directives, tasks, hooks) until it is trusted. After creating or editing such a config, run `mise trust` (or `mise trust <file>`). In detected CI mise assumes trust unless [paranoid mode](https://mise.jdx.dev/paranoid.html) is on.
 
 ## Preflight
 
-1. Verify the binary and active version:
-   ```bash
-   command -v mise && mise --version
-   ```
-2. Identify config scope before editing:
-   ```bash
-   mise config
-   mise settings get minimum_release_age
-   ```
-3. Inspect the relevant config file directly when diagnosing config-driven behavior:
-   - project: `mise.toml`
-   - global: `~/.config/mise/config.toml`
-4. Use `mise up --dry-run` before upgrades. Use `mise up --yes` only when the user asked for non-interactive changes.
+1. Confirm the binary and version: `command -v mise && mise --version`.
+2. See which config files are loaded and in what order: `mise config` (alias `mise cfg`).
+3. Inspect the file you intend to change directly — project `mise.toml` or global `~/.config/mise/config.toml`.
+4. Check active vs configured versions: `mise ls --current`. Check what is outdated: `mise outdated`.
+5. Preview upgrades with `mise up --dry-run` before mutating. Use `--yes` only when the user asked for non-interactive changes.
 
-## Command Decision Rules
+## Core Workflows
+
+### Add or pin a tool
+
+- **Per project**: `mise use <tool>@<version>` — installs, activates, and writes the version to the project `mise.toml`.
+- **Globally** (user default): `mise use --global <tool>@<version>` (`-g`) — writes to `~/.config/mise/config.toml`.
+- Editing the TOML by hand is equivalent; run `mise install` afterward to install newly added tools.
+- `mise use` writes to the **lowest-precedence file in the highest-precedence directory** (so `mise.toml` over `mise.local.toml`). Target another file with `mise use --path <file>` or `mise use --env <name>`.
+
+```bash
+mise use node@24                  # project: pin node 24
+mise use -g npm:@anthropic-ai/claude-code  # global CLI from npm backend
+mise install                      # install everything in config (no version change)
+mise exec node@22 -- node -v      # one-off, installs on demand, no config write
+```
+
+### Upgrade tools
+
+- `mise outdated` — show what can move.
+- `mise upgrade [tool]` (alias `mise up`) — upgrade within the configured range; updates `mise.lock` if present, leaves `mise.toml` ranges untouched.
+- `mise upgrade --bump [tool]` — also rewrite `mise.toml` to the newer prefix.
+- `mise upgrade <tool>@<exact>` — move to a specific version (bumps the config prefix only if it no longer matches).
+
+### Inspect & remove
+
+- `mise latest <tool>` / `mise ls-remote <tool>` — newest resolvable / all remote versions.
+- `mise ls [tool]` — installed versions; `mise where <tool>` — install path; `mise which <bin>` — resolved binary.
+- `mise uninstall <tool>@<version>` or `mise uninstall --all <tool>` — remove installs.
+- `mise unuse <tool>` — remove from config; `mise prune` — drop installs not referenced by any config.
+
+### Command decision table
 
 | Intent | Command |
 | --- | --- |
-| Install configured tools | `mise install` |
-| Install one configured tool | `mise install <tool>` |
-| Add a tool to project config | `mise use <tool>@<version>` |
-| Add a tool globally | `mise use --global <tool>@<version>` |
-| Run a one-off tool/version | `mise exec <tool>@<version> -- <command>` |
-| Run inside active mise context | `mise exec -- <command>` |
-| Check latest resolvable version | `mise latest <tool>` |
-| List remote versions | `mise ls-remote <tool>` |
-| Upgrade installed/configured tools | `mise up` |
-| Preview upgrade | `mise up --dry-run` |
+| Install all configured tools | `mise install` |
+| Install/pin one tool in project config | `mise use <tool>@<ver>` |
+| Install/pin one tool globally | `mise use -g <tool>@<ver>` |
+| Run a one-off tool/version | `mise exec <tool>@<ver> -- <cmd>` |
+| Run a command in the mise env | `mise exec -- <cmd>` (alias `mise x`) |
+| Run a task / script with the env | `mise run <task>` (alias `mise r`) |
+| Newest resolvable version | `mise latest <tool>` |
+| All remote versions | `mise ls-remote <tool>` |
+| What is outdated | `mise outdated` |
+| Upgrade within range | `mise up [tool]` |
+| Preview an upgrade | `mise up --dry-run` |
 | Rewrite config to newer versions | `mise up --bump` |
-| Remove installed versions | `mise uninstall <tool>@<version>` or `mise uninstall --all <tool>` |
+| Remove an installed version | `mise uninstall <tool>@<ver>` / `--all <tool>` |
+| Remove from config | `mise unuse <tool>` |
+| Generate/refresh a lockfile | `mise lock` |
+| Get/set/unset an env var | `mise set K=V` / `mise unset K` |
+| Trust a config after editing | `mise trust` |
 | Refresh stale resolver data | `mise cache clear` |
 | Rebuild shims | `mise reshim` |
-| Health check shell integration | `mise doctor` |
+| Health-check integration | `mise doctor` (alias `mise dr`) |
+| Find the right tool name | `mise registry` / `mise search <q>` |
 
-## Config Patterns
+CLI reference: <https://mise.jdx.dev/cli/>.
 
-Global tools live under `[tools]` in `~/.config/mise/config.toml`; project tools live in `mise.toml`.
+## Config Files
+
+Project config resolves in this precedence (top wins), merged up the directory tree (see [configuration](https://mise.jdx.dev/configuration.html)):
+
+- `mise.local.toml` (do not commit), then `mise.toml`, then `mise/config.toml`, `.mise/config.toml`, `.config/mise.toml`, `.config/mise/config.toml`, `.config/mise/conf.d/*.toml`. `mise.<env>.toml` (with `MISE_ENV`) layers in too.
+- Global: `~/.config/mise/config.toml`. System: `/etc/mise/config.toml`.
+
+Merge behavior: `[tools]`, `[env]`, `[settings]` are additive with overrides; each `[tasks.*]` is replaced wholesale by the closer file.
 
 ```toml
 [tools]
-node = "24"
+node = "24"                                    # registry shorthand → core backend
 pnpm = "latest"
-"npm:@anthropic-ai/claude-code" = "latest"
+"npm:@anthropic-ai/claude-code" = "latest"     # explicit backend
 "pipx:black" = "latest"
 "github:BurntSushi/ripgrep" = "latest"
-```
-
-Use table entries when a backend needs options:
-
-```toml
-[tools]
-"npm:some-cli" = { version = "latest", npm_args = "--ignore-scripts=false" }
+# Table form when a tool needs options:
 "pipx:harlequin" = { version = "latest", extras = "postgres,s3" }
+ripgrep = { version = "latest", os = ["linux", "macos"] }   # OS/arch gating
+"pipx:ruff" = { version = "latest", depends = ["python"] }  # install ordering
+node = { version = "22", postinstall = "corepack enable" }  # per-tool postinstall
 ```
 
-## Release-Age and Prerelease Handling
+- **Version specs**: exact (`22.5.0`), prefix (`22`), `latest`, `lts`. Scopes: `prefix:`, `ref:<sha>`, `path:<dir>`, `sub-N:<ver>`. Pinned exact versions bypass `minimum_release_age`.
+- **Idiomatic version files** (`.nvmrc`, `.python-version`, `.go-version`, `package.json`, …) are read but **disabled by default**; enable per tool with `mise settings add idiomatic_version_file_enable_tools <tool>`.
+- `.tool-versions` (asdf format) is supported for compatibility; prefer `mise.toml`.
+- Validate against the schema at <https://mise.jdx.dev/schema/mise.json> for editor autocompletion.
 
-`minimum_release_age` reduces supply-chain risk by ignoring versions newer than the configured age. mise defaults to a delay when the setting is absent. To disable it globally:
+## Backends
 
-```toml
-[settings]
-minimum_release_age = "0s"
-```
+Choosing a backend matters for reliability and supply-chain trust. Tiers (per the [registry](https://mise.jdx.dev/registry.html)):
 
-or:
+- **Preferred**: `aqua` (built-in Cosign/SLSA/attestation verification, no plugin), `github`, `gitlab`.
+- **Runtime-coupled, use sparingly**: `npm`, `pipx`, `gem`, `go`, `cargo`, `dotnet` — each needs its runtime on `PATH` and silently binds to whichever `node`/`python`/`ruby`/etc. was active at install time.
+- **Discouraged / legacy**: `ubi` is deprecated; new `asdf` and `vfox` tools are not accepted into the registry for supply-chain reasons (still installable with explicit syntax).
+
+Select or override a backend:
 
 ```bash
-mise settings set minimum_release_age 0s
+mise registry <tool>            # show available backends for a tool
+mise use aqua:cli/cli           # force a specific backend
+mise settings disable_backends=asdf
+export MISE_BACKENDS_PHP='vfox:mise-plugins/vfox-php'   # highest-priority override
 ```
 
-For selective bypasses:
+For per-backend install syntax, options, and the failure patterns hit when maintaining real installs (npm lifecycle-script approvals, pipx/uv prerelease conflicts, aqua/github SLSA tag errors, renamed packages), read [references/backends.md](references/backends.md).
 
-```toml
-[settings]
-minimum_release_age = "7d"
-minimum_release_age_excludes = ["npm:*", "trivy"]
-```
+## Supply-Chain Controls
 
-For one tool:
+- **`minimum_release_age`** ignores versions newer than a configured age to dodge compromised fresh releases (Renovate-style). mise applies a built-in default when unset. It affects fuzzy resolution only; pinned exact versions bypass it. For `npm:` and `pipx:` it also constrains transitive dependencies during install.
 
-```toml
-[tools.trivy]
-version = "latest"
-minimum_release_age = "0s"
-```
+  ```toml
+  [settings]
+  minimum_release_age = "7d"
+  minimum_release_age_excludes = ["npm:*", "trivy"]   # backend wildcards / shorthands / full IDs
+  [tools.trivy]
+  version = "latest"
+  minimum_release_age = "1d"   # per-tool override
+  ```
 
-Prereleases are separate from release age. Global prerelease opt-in:
+  Precedence: `--minimum-release-age` flag > per-tool > global. Disable globally with `minimum_release_age = "0s"`.
+- **Prereleases** are separate from release age. Opt in globally with `[settings] prereleases = true`, or per tool with `prerelease = true` (documented for `github:`, `forgejo:`, `aqua:`, `dotnet:`). Do not assume it changes `npm:`/`pipx:` resolution without testing.
+- **Verification**: aqua tools verify Cosign/Minisign signatures, SLSA provenance, and GitHub attestations automatically. See [security](https://mise.jdx.dev/security.html).
 
-```toml
-[settings]
-prereleases = true
-```
+When `mise up` reports a newer release is ignored, or a tool stops resolving, follow the diagnosis playbook in [references/troubleshooting.md](references/troubleshooting.md) before concluding it is a config bug.
 
-Per-tool `prerelease = true` is documented for `github:`, `forgejo:`, `aqua:`, and `dotnet:` backends. Do not assume it changes `npm:` resolution without testing against the current mise version.
+## Lockfiles & Reproducibility
 
-## Troubleshooting Update Warnings
-
-When `mise up` says a newer release is ignored by `minimum_release_age`:
-
-1. Confirm the active setting:
-   ```bash
-   mise settings get minimum_release_age
-   mise latest --minimum-release-age 0s <tool>
-   ```
-2. Clear resolver caches once before concluding:
-   ```bash
-   mise cache clear
-   mise latest --minimum-release-age 0s <tool>
-   ```
-3. Compare with the upstream registry:
-   ```bash
-   npm view <package> version time --json
-   ```
-4. If `minimum_release_age = "0s"` still returns the old version, treat it as stale/missing mise remote metadata or backend limitations, not a config failure. Report the evidence: active setting, `mise latest` result, upstream latest version, and whether cache clear changed anything.
-
-When `mise` cannot resolve an npm package that was renamed, verify both package names against the npm registry. Example from this session: `npm:@sourcegraph/amp` stopped resolving under the date filter because Amp moved to `npm:@ampcode/cli`. Replace the tool key, install the new package, then uninstall the old package:
-
-```toml
-[tools]
-"npm:@ampcode/cli" = { version = "latest", npm_args = "--ignore-scripts=false" }
-```
+`mise.lock` pins exact versions and (backend-permitting) checksums/URLs. It is **not created automatically**: enable it, then generate.
 
 ```bash
-mise install 'npm:@ampcode/cli'
-mise uninstall --all 'npm:@sourcegraph/amp'
-mise list 'npm:@sourcegraph/amp'
+mise settings lockfile=true   # or [settings] lockfile = true
+mise lock                     # generate/refresh mise.lock for all tools
+mise install                  # install exact locked versions
 ```
 
-## Backend-Specific Failure Patterns
+- Commit `mise.lock` and any `mise.<env>.lock`; gitignore `mise.local.lock`.
+- `locked = true` (or `MISE_LOCKED=1`) requires every tool to have a pre-resolved URL in the lockfile — fully offline/reproducible CI. Note: `locked` is **global in scope**, so it also covers global config tools; run `mise lock -g` if global tools warn.
+- Checksum/URL support is full for `aqua`/`http`/`github`/`gitlab`, version-only for `npm`/`cargo`/`pipx`/`asdf`. See [mise.lock](https://mise.jdx.dev/dev-tools/mise-lock.html).
 
-### npm backend
+## Feature Map
 
-mise may skip lifecycle scripts with `--ignore-scripts=true`. This is safer by default because lifecycle scripts execute package code during install.
+mise does more than tool versions. Reach for these and read the linked docs when the task needs them:
 
-Before opting in:
-
-1. Read the package's `package.json` `scripts` block.
-2. Read the referenced script files if they exist in the installed package or source package.
-3. Prefer package-level `allow_builds` when using `aube` or `pnpm`; use `npm_args = "--ignore-scripts=false"` only when the selected CLI requires its own scripts and the package is trusted.
-
-```toml
-"npm:some-cli" = { version = "latest", npm_args = "--ignore-scripts=false" }
-"npm:some-cli" = { version = "latest", allow_builds = ["esbuild"] }
-```
-
-### pipx backend with uv
-
-mise uses `uv tool install` when `uv` is available. `minimum_release_age` is forwarded into Python dependency resolution, and packages with prerelease-only transitive dependencies can fail even when the top-level package is stable.
-
-If uv reports a prerelease dependency conflict, prefer an explicit prerelease dependency over broad prerelease allowance:
-
-```toml
-"pipx:markitdown" = {
-  version = "latest",
-  extras = "all",
-  uvx_args = "--with azure-ai-contentunderstanding==1.2.0b2 --prerelease explicit",
-}
-```
-
-Use broad `--prerelease allow` only when the user accepts prereleases throughout the tool environment. Avoid `--index-strategy unsafe-best-match` unless all configured Python indexes are equally trusted.
-
-### aqua and GitHub release backends
-
-SLSA or release-tag failures can be backend-specific. Example failure shape:
-
-```text
-SLSA verification error ... Failed to get release ... /releases/tags/<owner>/<repo>@<version>
-```
-
-That usually means the backend constructed a tag name GitHub does not expose. Verify upstream tags/releases, then switch backend if the same binary is available through a reliable plugin:
-
-```bash
-mise registry <tool>
-mise ls-remote <tool>
-mise latest 'asdf:<plugin-owner>/<plugin-name>'
-```
-
-Example replacement pattern from this session:
-
-```toml
-# Instead of a broken aqua resolution for Bitwarden Secrets Manager:
-"asdf:asdf-community/asdf-bitwarden-secrets-manager" = "latest"
-```
+- **Environment variables** — `[env]` per directory, `mise set/unset`, lazy `tools = true` eval, `required = true`, redactions: <https://mise.jdx.dev/environments/>
+- **Secrets** — fnox (recommended), sops, or inline age encryption: <https://mise.jdx.dev/environments/secrets/>
+- **Tasks** — TOML tasks and standalone script tasks, parallel deps, sources/outputs: <https://mise.jdx.dev/tasks/> ; `mise watch` for rebuild-on-change: <https://mise.jdx.dev/cli/watch.html>
+- **Shims vs activate** — when to use each: <https://mise.jdx.dev/dev-tools/shims.html>
+- **Tool stubs** — self-contained executable shims pinning a tool: <https://mise.jdx.dev/dev-tools/tool-stubs.html>
+- **Hooks** — run commands on `cd`/enter/leave/preinstall/postinstall: <https://mise.jdx.dev/hooks.html>
+- **Templates** — Tera templating inside config values: <https://mise.jdx.dev/templates.html>
+- **Settings** — full settings list and env-var equivalents: <https://mise.jdx.dev/configuration/settings.html>
+- **Registry** — browse aliased tools: <https://mise.jdx.dev/registry.html> (`mise registry`, `mise search`)
+- **Config environments** — `mise.<env>.toml` with `MISE_ENV`, platform auto-envs: <https://mise.jdx.dev/configuration/environments.html>
+- **CI** — caching and setup: <https://mise.jdx.dev/continuous-integration.html> (or [mise-action](https://github.com/jdx/mise-action))
+- **IDE integration**: <https://mise.jdx.dev/ide-integration.html> · **direnv**: <https://mise.jdx.dev/direnv.html> · **shell aliases**: <https://mise.jdx.dev/shell-aliases.html>
+- **MCP server** — expose mise to agents: <https://mise.jdx.dev/mcp.html>
+- **Trust & paranoid mode**: <https://mise.jdx.dev/cli/trust.html> · <https://mise.jdx.dev/paranoid.html>
+- **Cache behavior** (and `mise cache clear`): <https://mise.jdx.dev/cache-behavior.html>
+- **FAQ / troubleshooting**: <https://mise.jdx.dev/faq.html> · <https://mise.jdx.dev/troubleshooting.html>
 
 ## Verification After Changes
 
-After editing config or installing tools:
-
 ```bash
-mise install <changed-tool>
-mise exec -- <binary> --version
-mise up --dry-run <changed-tool>
+mise install <changed-tool>       # install the edited entries
+mise exec -- <binary> --version   # confirm the real binary, not just the tool key
+mise up --dry-run <changed-tool>  # confirm resolution is clean
+mise ls --current                 # confirm active versions
 ```
 
-For global cleanup:
-
-```bash
-mise uninstall --all '<old-tool-key>'
-mise list '<old-tool-key>'
-```
-
-For package-manager-backed CLIs, verify the actual binary name, not only the mise tool key.
+For package-manager-backed CLIs, verify the actual binary name (e.g. `npm:@ampcode/cli` provides `amp`), not only the mise tool key. After global cleanup, confirm removal: `mise uninstall --all '<old-key>' && mise ls '<old-key>'`.
 
 ## Guardrails
 
-- Do not modify global config unless the user asks for global behavior or the current failure is in `~/.config/mise/config.toml`.
-- Do not trust lifecycle scripts merely to silence warnings; inspect them first.
-- Do not confuse release-age filtering with prerelease filtering.
-- Do not keep compatibility shims for renamed tools unless the user explicitly needs both names.
-- Do not use `--index-strategy unsafe-best-match` for uv unless the trust boundary is clear.
-- Do not treat one cache-cleared retry as proof of a fixed upstream; verify with the upstream registry or release API.
+- Do not edit global config unless the user asked for global behavior or the failure is in `~/.config/mise/config.toml`. Default tool changes to the project `mise.toml`.
+- After editing a config with env/tasks/hooks, trust it (`mise trust`) so mise will parse it.
+- Prefer `aqua`/`github` backends over `npm`/`pipx`/`asdf`/`vfox`/`ubi` when a tool is available through more than one.
+- Do not enable lifecycle scripts (`npm_args = "--ignore-scripts=false"`, `allow_builds`, `--trust`) just to silence a warning — inspect the scripts first; they execute package code at install time.
+- Do not confuse release-age filtering with prerelease filtering; they are independent settings.
+- Do not keep compatibility shims for renamed tools unless the user needs both names — migrate and uninstall the old key.
+- One cache-cleared retry is not proof of an upstream fix; corroborate with the upstream registry/release API.
+- Do not use uv `--index-strategy unsafe-best-match` unless every configured index is equally trusted.
 
 ## Output Contract
 
-When reporting a mise diagnosis, include:
+When reporting a mise change or diagnosis, include:
 
-- changed config paths and exact tool keys;
+- changed config paths and exact tool keys (project vs global);
 - root cause per warning/error;
-- commands run and observed result;
-- remaining warnings separated from fixed warnings;
-- whether any global state changed.
+- commands run and observed results;
+- fixed warnings separated from remaining warnings;
+- whether any global state changed and whether a config needs trusting.
 
 ## Sources
 
-- mise Getting Started: https://mise.jdx.dev/getting-started.html
-- mise Settings: https://mise.jdx.dev/configuration/settings.html
-- mise npm backend: https://mise.jdx.dev/dev-tools/backends/npm.html
-- mise pipx backend: https://mise.jdx.dev/dev-tools/backends/pipx.html
+- Getting started: <https://mise.jdx.dev/getting-started.html>
+- Dev tools & tool options: <https://mise.jdx.dev/dev-tools/>
+- Configuration: <https://mise.jdx.dev/configuration.html>
+- Backends index: <https://mise.jdx.dev/dev-tools/backends/>
+- Settings: <https://mise.jdx.dev/configuration/settings.html>
+- Security & verification: <https://mise.jdx.dev/security.html>
+- Lockfiles: <https://mise.jdx.dev/dev-tools/mise-lock.html>
+- CLI reference: <https://mise.jdx.dev/cli/>
