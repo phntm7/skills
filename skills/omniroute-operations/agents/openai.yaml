@@ -1,0 +1,4 @@
+interface:
+  display_name: "OmniRoute Operations"
+  short_description: "Inspect OmniRoute models, providers, and limits"
+  default_prompt: "Use $omniroute-operations to check OmniRoute model availability, provider health, quota limits, or a chat route smoke test."
