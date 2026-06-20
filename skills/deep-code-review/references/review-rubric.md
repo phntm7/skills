@@ -1,6 +1,6 @@
 # Review rubric
 Use this as the spine for a strict review of a diff or change set.
-This is review-only. Flag problems. Push for better structure. Recommend concrete remedies. Do not edit code. Do not post to the PR.
+Treat this as a review-only task. Flag problems, push for better structure, recommend concrete remedies. Do not modify the code; leave delivery of the findings to the caller.
 The job is not to prove the code works. The job is to decide whether the change leaves the codebase better, simpler, and easier to maintain.
 
 ## Core mandate

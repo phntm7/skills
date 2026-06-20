@@ -2,7 +2,7 @@
 
 Use this reference for the **Architecture & depth** lens when reviewing a diff or PR-sized change set.
 
-This skill is review-only. Flag structural problems, push for deeper shapes, and recommend concrete rewrites. Do not edit code. Do not post to the PR.
+This is a review-only task. Flag structural problems, push for deeper shapes, and recommend concrete rewrites. Do not modify the code; leave delivery of the findings to the caller.
 
 Findings use the severity scale and schema from `SKILL.md` and [report-format.md](report-format.md). For architecture-heavy visuals, use the optional HTML report mode in [report-format.md](report-format.md); do not duplicate it here.
 
@@ -167,8 +167,8 @@ Use this only when recommending a structural rewrite and the best interface is n
 Pattern:
 
 1. Frame the changed module, current seam, dependency category, and constraints.
-2. Spawn 3+ read-only subagents in parallel.
-3. Give each subagent a different constraint and ask for a radically different interface:
+2. If your runtime supports sub-agents, run 3+ read-only reviewers in parallel; otherwise sketch the alternatives yourself, one at a time.
+3. Give each a different constraint and ask for a radically different interface:
    - Minimize the interface: 1–3 entry points, maximum leverage per entry point.
    - Maximize flexibility: support likely extension points.
    - Optimize for the common caller: make the default path trivial.

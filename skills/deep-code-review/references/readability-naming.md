@@ -1,7 +1,7 @@
 # Readability & Naming
 Review names introduced or changed by the diff. Read surrounding code before flagging; consistency with the project beats textbook naming.
 
-This lens is review-only: flag and recommend, never edit or post. Use the findings schema in [report-format.md](report-format.md) and the **Blocker / Major / Minor / Nit** scale from `SKILL.md`.
+Apply this lens for review only: flag and recommend; do not edit, and leave delivery of the findings to the caller. Use the findings schema in [report-format.md](report-format.md) and the **Blocker / Major / Minor / Nit** scale from `SKILL.md`.
 
 ## Diff review focus
 - New or renamed variables, constants, functions, methods, classes, types, files, API fields, and database fields.
