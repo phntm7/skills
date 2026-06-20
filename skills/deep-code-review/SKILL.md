@@ -1,6 +1,6 @@
 ---
 name: deep-code-review
-description: Run an in-depth, full-scale code review of a PR or large change set, covering correctness, architecture, simplicity, readability, naming, types, tests, security, and performance — with the deepest scrutiny on architecture, simplicity, and maintainability. Use when a large refactor or feature has been implemented and needs a rigorous review before merge, when asked to review a PR in depth, or for a thorough/strict/thermonuclear maintainability audit. Parallelizes across sub-agents when the runtime supports them. A review task, not a modification task: the output is prioritized, PR-comment-ready findings rather than code changes.
+description: Run an in-depth, full-scale code review of a PR or large change set, covering correctness, architecture, simplicity, readability, naming, types, tests, security, and performance — with the deepest scrutiny on architecture, simplicity, and maintainability. Use when a large refactor or feature has been implemented and needs a rigorous review before merge, when asked to review a PR in depth, or for a thorough/strict/thermonuclear maintainability audit. Parallelizes across sub-agents when the runtime supports them. A review task rather than a modification task — the output is prioritized, PR-comment-ready findings rather than code changes.
 ---
 
 # Deep Code Review
