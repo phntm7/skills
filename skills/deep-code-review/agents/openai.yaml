@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deep Code Review"
+  short_description: "In-depth, full-scale PR/change-set review across all quality dimensions"
+  default_prompt: "Use $deep-code-review to run a rigorous, full-scale review of a PR or large change set — correctness, architecture, simplicity, readability, naming, types, tests, security, performance — and return prioritized, PR-comment-ready findings with a verdict."
