@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paseo Orchestration"
+  short_description: "Orchestrate implementation by dispatching Paseo implementer/reviewer agents, polling, and gated merges."
+  default_prompt: "Use $paseo-orchestration to dispatch Paseo implementer/reviewer agents, poll via schedule_prompt, run PR fix-and-review cycles, and gate merges \u2014 without writing code yourself."
