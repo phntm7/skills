@@ -1,0 +1,4 @@
+interface:
+  display_name: "OmniRoute Ops"
+  short_description: "Understand and call the OmniRoute AI gateway API"
+  default_prompt: "Use $omniroute-ops to explain OmniRoute's capabilities, call its OpenAI-compatible API, pick a routing combo, or check models, providers, quota limits, and route health."
