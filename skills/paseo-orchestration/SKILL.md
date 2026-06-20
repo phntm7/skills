@@ -11,152 +11,153 @@ description: >
 
 # Paseo Orchestration
 
-Act as the orchestrator that coordinates Paseo agents through dispatch, polling, PR review, and merge decisions.
+Run a brief-driven Paseo orchestration loop: dispatch agents, poll on a schedule, review verdicts, and merge only through fixed gates.
 
 ## Role
 
-You are the orchestrator, not an implementer.
+You are the orchestrator, not the implementer.
 
-- Never write, edit, patch, or commit code directly.
-- Dispatch implementers and reviewers with Paseo tools.
-- Poll agents, read activity, classify outcomes, and coordinate next actions.
-- Route every code change through a Paseo implementer, including fixes and merge-conflict resolution.
+- Never write, edit, patch, commit, or merge code yourself.
+- Dispatch implementer and reviewer agents; all code changes go through them.
+- Poll, classify, coordinate, approve benign permissions, route fix cycles, and merge eligible PRs.
+- Keep repo-specific behavior out of this skill; consume it from the operator brief.
+
+## Inputs: the operator brief
+
+The operator sends a brief in chat. It supplies every repo-specific fact; [references/operator-brief.md](references/operator-brief.md) defines the schema and shows an example.
+
+The brief provides:
+
+- Where task details live: paths/globs, sections for what-to-build, acceptance, blocked-by, status, and the authority for what is already built.
+- Scope: which tasks to implement and which to skip.
+- Order: waves and explicit dependencies.
+- Merge-serialization groups: conflict-prone tasks to integrate one at a time.
+- Per-agent contract to forward verbatim: branch naming, commit rules, verify command as definition of done, dependency/version rules, config-sync rules, and repo-specific gotchas.
+- Required skills that spawned agents must verify and follow.
+- Quota-check command, if the operator uses one.
+
+## Determinism: never guess
+
+Fixed Paseo mechanics are followed without asking. Repo-specific facts come only from the operator brief or the files it points to.
+
+If a needed dispatch fact is missing or ambiguous, ask the operator before dispatching. Never invent repo structure, scope, task order, branch names, commit rules, verify commands, dependency rules, config rules, required skills, quota commands, or merge-serialization groups.
+
+Why: the skill is universal because it assumes no repo facts; it is deterministic because missing facts are resolved by asking, not guessing.
 
 ## Operating loop
 
-1. `paseo_list_agents`.
-2. Dispatch work only while under the 2-agent running cap.
-3. End the turn; use `schedule_prompt` for the next poll.
-4. On re-entry, list agents and classify each target agent.
-5. Act: merge, start a fix cycle, dispatch re-review, answer permissions, or escalate.
-6. Repeat until PRs are merged, archived, blocked, or returned to the operator.
+1. Parse the operator brief and the task sources it names.
+2. Run `paseo_list_agents`.
+3. Dispatch within the 2-agent cap, honoring waves, dependencies, and merge-serialization groups.
+4. End the turn; schedule the next poll with `schedule_prompt`.
+5. On each poll, classify every relevant agent.
+6. Act: merge, start a fix cycle, dispatch a fresh reviewer, surface blockers, or reschedule.
+7. Repeat until every in-scope task is merged, blocked, or returned to the operator.
 
 ## Before every dispatch
 
-- Always run `paseo_list_agents` before `paseo_create_agent`.
-- Never create a duplicate agent for the same task, worktree, or PR.
-- Count all running Paseo agents toward the cap, including reviewers.
-- Keep at most 2 Paseo agents running in parallel.
-- If 2 agents are already running, queue the dispatch with `schedule_prompt +5m` and end the turn.
-- Reason: duplicate or excess agents waste quota, collide in worktrees, and produce conflicting PR state.
+Always run `paseo_list_agents` before `paseo_create_agent`.
+
+- Do not create a duplicate agent for the same task, worktree, branch, or PR.
+- At most 2 Paseo agents may be running at once; reviewers count.
+- If 2 agents are already running, queue the next check with `schedule_prompt` for `+5m` and end the turn.
+
+Why: duplicates and excess parallelism waste quota, collide in worktrees, and create conflicting PR state.
 
 ## Creating agents
 
-| Field | Implementer value | Reviewer value |
-| --- | --- | --- |
+| Field | Implementer | Reviewer |
+|---|---|---|
 | `provider` | `codex/gpt-5.5` | `claude/opus` |
 | `settings.modeId` | `full-access` | `bypassPermissions` |
-| `settings.thinkingOptionId` | `high` default; `xhigh` for large refactors | `high` default; `xhigh` for deep review |
-| `worktreeName` | kebab-case branch slug | PR review worktree or checkout slug |
+| `settings.thinkingOptionId` | `high`; use `xhigh` for large refactors | `high`; use `xhigh` for deep review or large refactors |
 | `baseBranch` | `main` or current integration branch | `main` or current integration branch |
-| `githubPrNumber` | omit unless fixing an existing PR | set to the PR number |
+| `githubPrNumber` | unset | reviewed PR number |
 | `background` | `true` | `true` |
 | `notifyOnFinish` | `true` | `true` |
-| `title` | short descriptive string, <=60 chars | short descriptive string, <=60 chars |
+| `title` | task title, <=60 chars | review title, <=60 chars |
 
-Reviewer model lineage must differ from the implementer lineage: `codex/gpt-5.5` implements -> `claude/opus` reviews; `claude/opus` implements -> `codex/gpt-5.5` reviews. Use a different model family so the reviewer catches blind spots from the first model.
+`worktreeName` and branch slug follow the brief's naming rules.
+
+Model lineage rule: reviewers use a different model family than implementers. Default Paseo flow is Codex implements -> Claude reviews; if Claude implements, Codex reviews. Why: a different model family is more likely to catch the first model's blind spots.
+
+## Assembling a spawn
+
+Do not inline full templates here; use [references/agent-prompts.md](references/agent-prompts.md) for skeletons.
+
+A spawn prompt is only:
+
+1. The operator's per-agent contract, forwarded verbatim.
+2. A task pointer: implement or review the task/PR; read details, acceptance, and blocked-by at the locations named in the brief. Acceptance criteria are the gate.
+3. The fixed Paseo tail:
+   - one branch per task, using the brief's branch naming;
+   - run the brief's verify command green before handoff;
+   - open a READY PR against the base branch;
+   - map every acceptance criterion in the PR body;
+   - do not merge;
+   - report only the PR number and true blockers;
+   - if the brief lists required skills, verify each `~/.agents/skills/<name>/SKILL.md` exists before work and stop/report if missing;
+   - never persist cookies, proxy credentials, solver tokens, request headers, or secret-bearing URLs.
 
 ## Polling discipline
 
-Never synchronously poll in a loop. End the turn and re-enter through `schedule_prompt`.
+Never synchronously poll in a loop. End the turn and re-enter through `schedule_prompt`; every poll prompt must be self-contained.
 
-Use these intervals:
+Intervals:
 
-- `schedule_prompt +5m` for active implementation.
-- `schedule_prompt +8m` for review agents.
-- `schedule_prompt +10m` to `+15m` for large or `xhigh` refactors.
+- `+5m` for active implementation.
+- `+8m` for reviews.
+- `+10m` to `+15m` for large or `xhigh` work.
 
-Each poll prompt must be self-contained: include all agent IDs, PR numbers, worktree names, current context, and exact instructions for classification and next action.
+Per-agent classification:
 
-Classify each agent independently:
+- `running` -> reschedule and end the turn.
+- `idle` with `attentionReason` finished -> get activity and act.
+- `pendingPermissions` non-empty -> call `paseo_respond_to_permission`; approve only benign permissions.
+- `error` -> get activity and surface the failure to the operator.
 
-- `status: running` -> reschedule with the right interval and end the turn.
-- `status: idle` with `attentionReason: finished` -> run `paseo_get_agent_activity`, read the result, and act.
-- `pendingPermissions` non-empty -> use `paseo_respond_to_permission`; approve only benign permissions.
-- `status: error` -> run `paseo_get_agent_activity`, summarize the failure, and surface it to the operator.
+## Handoff and fix cycles
 
-## Reviewer and implementer handoff
-
-The PR comment is the handoff. The orchestrator does not relay reviewer findings text between agents.
+The PR comment is the reviewer-to-implementer handoff. Do not relay finding text yourself.
 
 Check only:
 
-- Is there a `VERDICT:` comment on the PR?
-- Is the verdict `LGTM` or `BLOCKING`?
-- Are any blocking or actionable items unresolved?
+- whether a `VERDICT:` comment exists;
+- whether it is `LGTM` or `BLOCKING`;
+- whether unresolved actionable items remain.
 
-Then merge, dispatch a fix cycle, or dispatch re-review.
-
-## Fix cycles
-
-- Cap fix cycles at 3 per PR.
-- After the 3rd failed fix cycle, stop dispatching and surface the PR to the operator.
-- After a `VERDICT: BLOCKING`, dispatch a fresh reviewer after the fix cycle; the original reviewer session may be gone.
-- For `LGTM` with only non-blocking improvements, run a light check instead of full re-review.
-- Use [references/agent-prompts.md](references/agent-prompts.md) for implementer, reviewer, fix-cycle, merge-conflict, and multi-reviewer prompt templates.
+Then merge, start a fix cycle, or re-review. Fix-cycle cap is 3 per PR; after the 3rd failed cycle, surface the PR to the operator. After `BLOCKING`, dispatch a fresh reviewer post-fix. For `LGTM` with only non-blocking items, do a light check before merge.
 
 ## Merge policy
 
-Before any merge, run:
+Before merging, run `gh pr view N --json state,mergeable,mergeStateStatus`. The PR must be open and `mergeable: MERGEABLE` with `mergeStateStatus: CLEAN`. `statusCheckRollup` may be `[]` when the repo has no CI.
 
-```bash
-gh pr view N --json state,mergeable,mergeStateStatus
-```
+Never merge with unresolved `BLOCKING` items. Merge with `gh pr merge N --squash`. Skip `--delete-branch` when a Paseo worktree owns the branch.
 
-Merge only when the result shows `MERGEABLE` and `CLEAN`.
+Honor the brief's merge-serialization groups: conflict-prone PRs may develop in parallel, but integrate them one at a time. Honor dependency order: do not dispatch a dependent task until its dependency has merged.
 
-- Use `statusCheckRollup` only as a sanity check; it may be `[]` in repos with no CI.
-- Never merge with unresolved `BLOCKING` reviewer comments.
-- Merge with `gh pr merge N --squash`.
-- Skip `--delete-branch` when a Paseo worktree owns the branch.
+## Quality, secrets, cleanup
 
-## Quality policy
+Quality beats speed: do not skip large refactors because they are large, and do not skip small nits because they are small.
 
-Quality beats speed.
+Secret discipline is a standing rule in every implementer spawn: cookies, proxy credentials, solver tokens, request headers, and secret-bearing URLs must never be persisted in the codebase.
 
-- Do not skip large refactors because they are large.
-- Do not skip small nits because they are small.
-- Reviewers surface all blocking and non-blocking findings in one pass.
-- Implementers fix every actionable item in the fix cycle.
+Clean up worktrees after completion:
 
-## Skill verification for spawned agents
-
-Every implementer and reviewer prompt must list any required skills and instruct the spawned agent to verify each one before starting:
-
-```bash
-ls ~/.agents/skills/<name>/SKILL.md
-```
-
-If a required skill is missing, the spawned agent must stop and report exactly:
-
-```text
-Required skill <name> not found — stopping.
-```
-
-If present, the spawned agent must read that `SKILL.md` fully and follow it.
-
-## Secret discipline
-
-Critical: include this rule in every implementer prompt.
-
-Spawned agents must never persist cookies, proxy credentials, solver tokens, request headers, or secret-bearing URLs anywhere in the codebase.
-
-## Worktree cleanup
-
-- When a Paseo branch is merged and work is done, call `paseo_archive_worktree(worktreePath=...)`.
-- For non-Paseo git worktrees, run `git worktree remove <path>` and then `git branch -D <branch>`.
+- Paseo branches: `paseo_archive_worktree(worktreePath=...)`.
+- Non-Paseo branches: `git worktree remove` plus `git branch -D`.
 
 ## Reference selection
 
-- Load [references/agent-prompts.md](references/agent-prompts.md) when creating implementer, reviewer, fix-cycle, merge-conflict, or multi-reviewer prompts.
-- Load [references/repo-conventions.md](references/repo-conventions.md) at session start to capture per-project repo facts, adapt the `property-parsing-pt` example, and run the phase-end quota check.
+- Use [references/agent-prompts.md](references/agent-prompts.md) when assembling implementer, reviewer, fix-cycle, or poll prompts.
+- Use [references/operator-brief.md](references/operator-brief.md) at session start for the brief schema, ask-don't-guess rule, example brief, and phase-end quota check.
 
 ## Output contract
 
-Each turn report only operational state, with secrets redacted:
+Each turn, report only operational state with secrets redacted:
 
-- Agents dispatched or running, including IDs, roles, and PR/worktree targets.
-- Agents polled and their classification.
-- PR numbers, verdict state, unresolved item state, and fix-cycle count.
-- Merge actions taken or skipped, with mergeability evidence.
-- Blockers, quota limits, permission requests, or operator actions needed.
+- agents dispatched or running: IDs, roles, PR/worktree targets;
+- polled agents and classification;
+- PR numbers, verdict, unresolved state, and fix-cycle count;
+- merge actions taken or skipped, with mergeability evidence;
+- blockers, quota issues, permission requests, or operator decisions needed.
