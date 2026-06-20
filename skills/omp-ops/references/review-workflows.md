@@ -11,7 +11,7 @@ Use a one-shot `omp -p` review when:
 - The diff is small enough to fit in one prompt and one response.
 - You need a second opinion before merging, not an ongoing conversation.
 - The review can be throwaway. Add `--no-session` only when you are sure you
-  will not need to resume.
+  will not need to resume or recover from an outer runner timeout.
 - You supply all needed diff/context in the prompt. Add `--no-tools` for maximum
   isolation in that mode.
 
@@ -23,7 +23,8 @@ Use a persistent session when:
 - You need to resume after a tool crash, terminal restart, or context handoff.
 
 Default to persistent sessions for review loops. OMP saves sessions unless you
-pass `--no-session`.
+pass `--no-session`. Long reviews can exceed an outer runner timeout while OMP
+still saves progress; avoid `--no-session` for any review expected to continue.
 
 ## One-shot review command
 
@@ -33,7 +34,7 @@ OMP reviews the intended project.
 ```bash
 omp -p \
   --cwd /path/to/repo \
-  --model provider/model \
+  --model <provider-id>/<model-id> \
   'Review the current working tree diff only.
 
 Goal: find correctness, security, data-loss, API-contract, and maintainability issues that should block or change this patch.
@@ -53,7 +54,7 @@ Output:
 
 Notes:
 
-- Replace `provider/model` with the configured reviewer model.
+- Replace `<provider-id>/<model-id>` with the configured reviewer model.
 - Add `--no-tools` only when you supply the needed diff/context in the prompt
   and want a pure advisory review.
 - Do not paste secrets, `.env` contents, tokens, private keys, or
@@ -67,30 +68,46 @@ re-review the result.
 1. Start the review session.
 
    ```bash
+   session_dir="$(mktemp -d)"
    omp -p \
+     --mode json \
+     --session-dir "$session_dir" \
      --cwd /path/to/repo \
-     --model provider/model \
+     --model <provider-id>/<model-id> \
      'You are reviewing the current working tree diff. Do not modify files.
 
-   Return only actionable findings. For each finding include severity, file/path, affected code, impact, and a concrete fix. Ignore broad advice and unrelated pre-existing issues.'
+   Return only actionable findings. For each finding include severity, file/path, affected code, impact, and a concrete fix. Ignore broad advice and unrelated pre-existing issues.' \
+     | tee /tmp/omp-review.jsonl
    ```
 
-   Add `--session-dir /path/to/sessions` when the caller wants a deterministic
-   place to recover the session file later.
+   `--mode json` emits JSONL events. The first `{"type":"session", ...}` event contains the session `id`; with `--session-dir`, the session file is written under that directory.
 
 2. Capture the session handle.
 
-   - If OMP prints a session id, session path, or resume hint, copy it exactly.
-   - If the runtime exposes session files, record the newest relevant session
-     path under the active session directory.
-   - If no id or path is visible, keep the same terminal context and use
-     `--continue` for the next review.
+   - For automation, prefer `--mode json` and parse the session event:
+
+     ```bash
+     session_id="$(jq -r 'select(.type == "session") | .id' /tmp/omp-review.jsonl)"
+     session_file="$(printf '%s\n' "$session_dir"/*_"$session_id".jsonl)"
+     ```
+
+   - If not using JSON mode, copy any printed session id/path/resume hint exactly, or record the newest relevant session path under the active session directory.
+   - If no id or path is visible, keep the same terminal context and use `--continue` for the next review.
    - Do not pass `--no-session` for loops you expect to resume.
 
    `--resume <value>` accepts a session file path or an id prefix. Do not rely
    on the interactive `--resume` picker inside an automated review loop; pass
    the id or path explicitly. Use `--continue` only when resuming the active
    terminal breadcrumb or the most recent session is safe.
+
+   If a long review exceeds the outer runner's timeout, do not discard the run.
+   Resume the captured id/path with `--resume <id|path>` and ask OMP to synthesize
+   completed findings plus any remaining review work.
+
+   Timeout policy: use at least 10 minutes for a small one-shot review and 20
+   minutes as the default for Opus/high-reasoning or repo-aware reviews. Use
+   30–45 minutes for large diffs. If you set OMP's `--max-time`, make the outer
+   process timeout at least 60 seconds longer so OMP can flush the session.
 
 3. Apply fixes in the caller, not in the review agent.
 
@@ -196,10 +213,10 @@ Return actionable findings only. Each finding must cite the supplied file/path a
   inspect diffs, and run narrow read-only commands or explicitly approved
   targeted tests.
 - Prefer sessions for review loops. Use `--no-session` only for throwaway
-  reviews with no sensitive context and no need to resume.
+  reviews with no sensitive context and no need to resume or recover.
 - Use `--cwd` on every command so OMP operates in the intended repository.
-- Use `--model`, `--smol`, or `--slow` intentionally. Do not let an unknown
-  default decide reviewer quality for high-risk changes.
+- Use `--model <provider-id>/<model-id>` and thinking controls intentionally. Do
+  not let an unknown default decide reviewer quality for high-risk changes.
 
 ## Handling OMP recommendations
 
@@ -221,13 +238,13 @@ Return actionable findings only. Each finding must cite the supplied file/path a
 One-shot, isolated review:
 
 ```bash
-omp -p --cwd /path/to/repo --model provider/model --no-tools '<initial review prompt>'
+omp -p --cwd /path/to/repo --model <provider-id>/<model-id> --no-tools '<initial review prompt>'
 ```
 
 Persistent review session:
 
 ```bash
-omp -p --cwd /path/to/repo --model provider/model '<initial review prompt>'
+omp -p --cwd /path/to/repo --model <provider-id>/<model-id> '<initial review prompt>'
 ```
 
 Resume by id or path:

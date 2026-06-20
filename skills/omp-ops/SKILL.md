@@ -14,7 +14,7 @@ OMP is Oh My Pi, a terminal AI coding agent CLI. It can run interactively or non
 
 Core paths and precedence:
 
-- Global agent dir defaults to `~/.omp/agent`; `PI_CODING_AGENT_DIR` relocates it.
+- Global agent dir defaults to `~/.omp/agent`; `PI_CODING_AGENT_DIR` relocates it. Treat `OMP_CODING_AGENT_DIR` as the matching alias when present, and do not set conflicting `PI_*`/`OMP_*` values.
 - `omp config path` prints the active agent dir.
 - Global settings live at `~/.omp/agent/config.yml`.
 - Project settings live at `<cwd>/.omp/config.yml` and load only when the current working directory has a non-empty `.omp/` directory.
@@ -37,11 +37,15 @@ Use this skill when the user asks to:
 
 - Treat this skill and its linked references as the OMP operating baseline; verify live state with `omp config`, `omp models`, or session commands when available.
 - Preserve process environment precedence: process env > `<cwd>/.env` > `~/.omp/agent/.env` > `~/.omp/.env` > `~/.env`; process env is never overwritten.
+- For environment-driven OMP settings, check both `PI_*` names and matching `OMP_*` aliases; process env still wins over `.env` files.
 - Use `authHeader: true` when an OpenAI-compatible provider needs `Authorization: Bearer <resolved key>`.
 - For OpenAI-compatible chat providers, the common `api` value is `openai-completions`.
-- Custom providers with non-empty `models` need `baseUrl`, `apiKey` unless `auth: none`, and provider-level or model-level `api`.
+- Custom providers with non-empty `models` need `baseUrl`, `apiKey` unless `auth: none` is correct, and provider-level or model-level `api`; `auth` modes are `apiKey`, `none`, and `oauth`.
+- `auth: oauth` does not remove API-key requirements unless the provider/setup explicitly supports that flow.
+- Model selection supports fuzzy matching, but automation should pass the exact `<provider-id>/<model-id>` selector.
 - Remember `omp config set` receives arrays/records as JSON strings.
 - Prefer `omp -p` for non-interactive review jobs. Sessions save unless `--no-session` is used.
+- For long reviews, keep sessions enabled, capture the session id/path, and resume with `--resume <id|path>` if an outer runner times out.
 - Use `--continue` for the terminal breadcrumb or most recent session; use `--resume <id|path>` for a specific saved session by path or id prefix. A bare `--resume` picker is interactive.
 - Use `--no-tools` only when the review must not touch tools; use `--no-session` only when the result must not be resumable.
 
@@ -64,8 +68,8 @@ omp models canonical --json
 
 # Non-interactive reviews and sessions
 omp -p "Review the current diff for correctness and security."
-omp -p --model <provider/model> "Review this change."
-omp -p --slow --plan "Review the implementation plan before code changes."
+omp -p --model <provider-id>/<model-id> "Review this change."
+omp -p --model <provider-id>/<model-id> --thinking high "Review the implementation plan before code changes."
 omp -p --cwd <path> --config <overlay.yml> "Review this project."
 omp -p --continue "Re-review after the fixes; focus on remaining issues."
 omp -p --resume <session-id-or-path> "Re-review the latest fixes."
@@ -91,7 +95,7 @@ When reporting OMP work to a user, include only what was actually checked or cha
 Do:
 
 - "Use `omp config path` first, then inspect the active global config before changing settings."
-- "Set `apiKey: OPENAI_API_KEY` and export the actual key outside the repo."
+- "Set `apiKey: OPENAI_API_KEY` or `apiKey: \"!op read op://team/openai/api-key\"` and keep the actual key outside the repo."
 - "Run `omp -p --resume abc123 'Re-review the fixes against the original findings.'` for a targeted loop."
 - "Use `--no-tools` for an advisory-only review."
 

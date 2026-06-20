@@ -6,7 +6,7 @@ Use this reference when an agent needs to inspect, change, or troubleshoot Oh My
 
 | Area | Path or source | Notes |
 |---|---|---|
-| Active agent directory | `omp config path` | Prints the active global agent directory. Default is `~/.omp/agent`; `PI_CODING_AGENT_DIR` relocates it. |
+| Active agent directory | `omp config path` | Prints the active global agent directory. Default is `~/.omp/agent`; `PI_CODING_AGENT_DIR` relocates it. Treat `OMP_CODING_AGENT_DIR` as the matching alias when present, and avoid conflicting `PI_*`/`OMP_*` values. |
 | Global settings | `~/.omp/agent/config.yml` | Main writable settings file. `/settings`, `omp config set`, and `omp config reset` write here, not to project config. |
 | Project settings | `<cwd>/.omp/config.yml` | Loaded only for the current working directory when `<cwd>/.omp/` exists and is non-empty. Edit this file directly when project-local settings are required. |
 | Config overlays | `--config <path>` | Loaded after defaults, global, and project settings. Use for temporary runs. |
@@ -21,15 +21,17 @@ Settings precedence, lowest to highest:
 4. `--config` overlays;
 5. runtime flags and environment variables.
 
+For environment-driven settings, check both `PI_*` names and matching `OMP_*` aliases. Treat the `OMP_*` form as a mirror of the `PI_*` name, and avoid setting both with different values.
+
 Project config is not a target for `omp config set`; if you need project-scoped behavior, create or edit `<cwd>/.omp/config.yml` and run OMP from that directory or pass `--cwd <project>`.
 
 ## 2. `omp config` commands
 
 | Command | Use |
 |---|---|
-| `omp config path` | Show the active global agent directory. Use this before editing files if `PI_CODING_AGENT_DIR` might be set. |
+| `omp config path` | Show the active global agent directory. Use this before editing files if `PI_CODING_AGENT_DIR` or `OMP_CODING_AGENT_DIR` might be set. |
 | `omp config list` | List effective configurable settings. |
-| `omp config get <key>` | Print one setting. Do not use this on keys that may contain secrets. |
+| `omp config get <key>` | Print one schema-defined setting. Redact only if the displayed value itself contains secret material from user config. |
 | `omp config set <key> <value>` | Write a global setting to `~/.omp/agent/config.yml`. |
 | `omp config reset <key>` | Write the schema default for a global setting to `~/.omp/agent/config.yml`. |
 
@@ -41,7 +43,7 @@ omp config set <array-key> '["value-one","value-two"]'
 omp config set <record-key> '{"name":"example","enabled":true}'
 ```
 
-If a value might contain a token, key, cookie, or credential, do not print it. Prefer editing the appropriate file after confirming the key name and source path.
+Secret risk is concentrated in `.env` files, `models.yml` literal values, stored auth tokens, cookies, and logs. Do not print those values; schema-defined settings from `omp config get` are not secret-bearing by default.
 
 ## 3. `models.yml` essentials
 
@@ -67,25 +69,30 @@ Essential fields:
 |---|---|
 | `providers.<id>.baseUrl` | Provider endpoint root. Required for custom providers with non-empty `models`. |
 | `providers.<id>.api` | Provider-level API adapter. Use `openai-completions` for OpenAI-compatible chat/completions providers. |
-| `providers.<id>.apiKey` | Environment variable name or literal key. Use an environment variable name, not a literal key. |
+| `providers.<id>.apiKey` | Environment variable name, literal key, or `!command <secret-command>`. Prefer an environment variable name or trusted command, not a literal key. |
 | `providers.<id>.authHeader` | When `true`, OMP sends `Authorization: Bearer <resolved-key>`. |
-| `providers.<id>.auth` | Set to `none` only for providers that require no API key. Otherwise omit it and provide `apiKey`. |
+| `providers.<id>.headers` | Extra headers. Secret header values may use `!command <secret-command>`; never inline real tokens. |
+| `providers.<id>.auth` | `apiKey`, `none`, or `oauth`. Use `none` only for no-key providers; custom `oauth` does not waive API-key requirements unless that provider/setup supports it. |
 | `providers.<id>.models` | List of model definitions exposed by the provider. Each model must include `id`; it can inherit provider-level `api` or set its own. |
 
 Rules to preserve:
 
 - A custom provider with a non-empty `models` list needs `baseUrl`.
-- It needs `apiKey` unless `auth: none` is explicitly correct for that provider.
+- It needs `apiKey` unless `auth: none` is explicitly correct for that provider. `auth: oauth` still needs the provider's required credential setup.
 - It needs an `api` at the provider level or on each model.
 - `openai-completions` is the common adapter for OpenAI-compatible chat APIs.
 - Keep provider IDs short, lowercase, and stable; changing them changes model names users select.
 
 ## 4. Credential resolution and safe secret handling
 
-`apiKey` may be either an environment variable name or a literal secret. Use the environment variable name form:
+`apiKey` may be an environment variable name, a literal secret, or a quoted shell command value that starts with `!`. Use an environment variable name or trusted command:
 
 ```yaml
 apiKey: NOVITA_API_KEY
+# or
+apiKey: "!op read op://team/novita/api-key"
+headers:
+  X-Provider-Token: "!op read op://team/provider/token"
 ```
 
 Resolution order for API keys:
@@ -98,9 +105,11 @@ Resolution order for API keys:
 
 The process environment wins and is never overwritten by `.env` files.
 
+If an `apiKey` or header value starts with `!`, OMP resolves the command output as the secret value. Treat the command, stdout, stderr, and logs as secret-adjacent.
+
 Safe handling rules:
 
-- Prefer environment variable names in `models.yml`; use `.env` files or the process environment for the actual values.
+- Prefer environment variable names or `!command` references in `models.yml`; use `.env` files, the process environment, or a trusted command for the actual values.
 - Use OMP stored auth only as an opaque credential source. Do not extract, print, copy, or convert stored credentials into config examples.
 - Use placeholder names such as `PROVIDER_API_KEY`, `NOVITA_API_KEY`, or `OPENAI_API_KEY` in examples.
 - Never paste, print, log, or commit real API keys, Bearer tokens, session cookies, or provider secrets.
@@ -147,6 +156,8 @@ omp -p --model novita/minimax/minimax-m3 "Reply with 'ok' only."
 
 If the provider wants a different model namespace, keep the model ID exactly as the provider documents it. The OMP model selector combines the provider ID and model ID as `<provider-id>/<model-id>`.
 
+OMP model selection supports fuzzy matching for interactive use, but unattended automation should pass the exact `<provider-id>/<model-id>` selector to avoid ambiguity.
+
 ## 6. Model discovery and verification commands
 
 | Command | Use |
@@ -186,8 +197,8 @@ omp -p --no-tools --model novita/minimax/minimax-m3 "Reply with 'ok' only."
 
 - Confirm the active directory with `omp config path`; edit that directory's `models.yml`.
 - Check provider and model indentation under `providers`.
-- Ensure a non-empty `models` list has model `id` values plus provider-level or model-level `api`, and the provider has `baseUrl` and `apiKey` unless `auth: none`.
-- Use the exact selector `<provider-id>/<model-id>`.
+- Ensure a non-empty `models` list has model `id` values plus provider-level or model-level `api`, and the provider has `baseUrl` and `apiKey` unless `auth: none` is correct.
+- Use the exact selector `<provider-id>/<model-id>` in automation; fuzzy matching is for human convenience.
 - Run `omp models <provider>` and `omp models find <pattern>`.
 - Run `omp models refresh` if the cache may be stale.
 
@@ -197,7 +208,7 @@ omp -p --no-tools --model novita/minimax/minimax-m3 "Reply with 'ok' only."
 - Check whether the process environment overrides `.env` files.
 - Verify the key exists in one allowed source without printing it.
 - Confirm `authHeader: true` for OpenAI-compatible Bearer-token providers.
-- If the provider intentionally has no key, use `auth: none`; do not leave a missing `apiKey` by accident.
+- If the provider intentionally has no key, use `auth: none`; if it uses `auth: oauth`, confirm that setup actually satisfies the provider's credential requirements.
 
 ### Provider appears disabled or ignored
 
