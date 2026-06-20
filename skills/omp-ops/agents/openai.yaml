@@ -1,4 +1,4 @@
 interface:
   display_name: "OMP Ops"
-  short_description: "Operate Oh My Pi config, models, credentials, sessions, and review loops."
-  default_prompt: "Use $omp-ops to configure Oh My Pi, manage omp models/providers and credentials, or run/resume omp review loops safely."
+  short_description: "Operate Oh My Pi (omp): config, model providers, credentials, sessions, and non-interactive runs."
+  default_prompt: "Use $omp-ops to configure Oh My Pi, manage omp model providers and credentials, or run and resume omp non-interactively."
