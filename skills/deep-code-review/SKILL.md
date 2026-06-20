@@ -1,6 +1,6 @@
 ---
 name: deep-code-review
-description: Run an in-depth, full-scale code review of a PR or large change set, covering correctness, architecture, simplicity, readability, naming, types, tests, security, and performance. Use when a large refactor or feature has been implemented and needs a rigorous review before merge, when asked to review a PR in depth, or for a thorough/strict/thermonuclear maintainability audit. Parallelizes across sub-agents when the runtime supports them. A review task, not a modification task: the output is prioritized, PR-comment-ready findings rather than code changes.
+description: Run an in-depth, full-scale code review of a PR or large change set, covering correctness, architecture, simplicity, readability, naming, types, tests, security, and performance — with the deepest scrutiny on architecture, simplicity, and maintainability. Use when a large refactor or feature has been implemented and needs a rigorous review before merge, when asked to review a PR in depth, or for a thorough/strict/thermonuclear maintainability audit. Parallelizes across sub-agents when the runtime supports them. A review task, not a modification task: the output is prioritized, PR-comment-ready findings rather than code changes.
 ---
 
 # Deep Code Review
@@ -58,7 +58,7 @@ For anything non-trivial, split the work up — across sub-agents when your runt
 | **Medium** (~5–20 files) | One reviewer per lens over the whole diff (or take the lenses one at a time yourself). |
 | **Large** (> ~20 files, or multiple subsystems) | **Partition by area/module first**, then review each partition across the lenses — one reviewer per partition, or a lens × area grid for very large PRs. |
 
-If your runtime supports sub-agents, delegate each slice to a read-only reviewer running in parallel; otherwise work the slices yourself. Whoever reviews a slice: investigate and report only — do not modify code, and do not run project-wide builds, tests, linters, or formatters, since nothing is being changed.
+If your runtime supports sub-agents, delegate each slice to a read-only reviewer running in parallel; otherwise work the slices yourself. Whoever reviews a slice investigates and reports only: don't modify code, and don't kick off project-wide builds, tests, linters, or formatters — N reviewers each running the full pipeline is wasteful and redundant, and nothing is being changed. Targeted verification is the main agent's job (step 4), not every reviewer's.
 
 Give every reviewer (yourself included) the diff slice it owns, the relevant reference doc(s) for its lens, the **severity scale** and the **findings schema** (below), and the brief to return only high-conviction findings.
 
@@ -66,14 +66,14 @@ Give every reviewer (yourself included) the diff slice it owns, the relevant ref
 
 Eight lenses. Each has a home reference doc — load it when you (or a delegated reviewer) apply that lens. Don't apply every lens with equal weight; weight by what the diff actually touches and by risk surface.
 
-1. **Correctness & edge cases** — bugs, broken invariants, off-by-one, null/empty/error paths, race conditions, missed cases. The diff must do what it claims.
+1. **Correctness & edge cases** — `references/correctness-and-risk.md`. Bugs, broken invariants, off-by-one, null/empty/error paths, race conditions, missed cases. The diff must do what it claims.
 2. **Architecture & depth** — `references/architecture.md`. Deep vs shallow modules, seams and adapters, the deletion test, leaked boundaries, logic in the wrong layer.
 3. **Simplicity & entropy** — `references/review-rubric.md` + `references/simplicity-mindsets/`. "Code judo" reframings, deletion bias, less total code, spaghetti-conditional growth, file-size explosions.
 4. **Readability & naming** — `references/readability-naming.md`. Names that mislead or obscure, magic numbers, unclear booleans, convention drift. The biggest lever on human-readability.
 5. **Types & boundaries** — `references/review-rubric.md`. Unnecessary `any`/`unknown`/casts/optionality, ad-hoc object shapes, silent fallbacks papering over unclear invariants.
-6. **Tests & coverage** — are the risky branches tested? Tests asserting behavior through an interface, not implementation detail? No mocks where a real test fits? Are deleted-behavior tests removed?
-7. **Security** — injection, authz/authn gaps, secret handling, unsafe deserialization, SSRF, trust-boundary crossings introduced by the diff.
-8. **Performance & orchestration** — needless allocation/copies, N+1s, avoidable sequential work that should run in parallel, non-atomic updates that can leave half-applied state.
+6. **Tests & coverage** — `references/correctness-and-risk.md`. Are the risky branches tested? Tests asserting behavior through an interface, not implementation detail? No mocks where a real test fits? Are deleted-behavior tests removed?
+7. **Security** — `references/correctness-and-risk.md`. Injection, authz/authn gaps, secret handling, unsafe deserialization, SSRF, trust-boundary crossings introduced by the diff.
+8. **Performance & orchestration** — `references/correctness-and-risk.md`. Needless allocation/copies, N+1s, avoidable sequential work that should run in parallel, non-atomic updates that can leave half-applied state.
 
 **Vocabulary boundary:** the architecture lens uses the precise terms in `references/architecture.md` exactly — *module, interface, implementation, depth, deep, shallow, seam, adapter, leverage, locality*. Do not substitute "component", "service", or "boundary" there. Every other lens uses plain language — don't force seam/adapter vocabulary onto a naming or bug finding.
 
@@ -85,6 +85,7 @@ The hard part, and yours alone — never delegate synthesis. From the raw findin
 
 - **Merge & dedupe** — collapse the same issue reported by multiple lenses at one location into one finding.
 - **Adjudicate conflicts** — lenses disagree (e.g. "extract an abstraction" vs "delete this code"). Settle with the deletion test (`references/architecture.md`), the simplicity mindsets, and the approval bar. Record the call; don't ship both.
+- **Verify what's checkable** — for a suspected correctness, security, or regression finding, the main agent may run a *targeted, read-only* check to confirm it before raising it: the specific test that covers the path, a typecheck or static-analysis pass scoped to the changed files. Never mutating commands, never a blanket project-wide pipeline, and never fanned out to every reviewer.
 - **Prioritize** — order by severity, then by risk surface. Lead with structural opportunities and blockers.
 - **Cap the nits** — a long list of cosmetic notes buries the real issues. Prefer a few high-conviction findings over an exhaustive nit dump. If there are structural problems, nits wait.
 
@@ -95,7 +96,7 @@ Default output: **prioritized findings as your response**, formatted per `refere
 Do **not** write a report file or generate the HTML report by default. Only when asked:
 
 - "write the review to a file" → markdown report (`references/report-format.md`).
-- architecture-heavy review where visuals help → optional **HTML report mode** (`references/report-format.md`).
+- an explicit request for a visual/HTML report → **HTML report mode** (`references/report-format.md`).
 
 Delivering the findings — posting to the PR or handing them back — is the caller's responsibility, outside this task's scope. Produce findings clean enough to paste directly.
 
@@ -122,6 +123,7 @@ Every finding, from every lens, in this shape (full format and examples in `refe
 ## References
 
 - `references/review-rubric.md` — the strict review standards, flag list, remedies, approval bar, tone.
+- `references/correctness-and-risk.md` — checklists for the correctness, tests, security, and performance lenses.
 - `references/architecture.md` — deep/shallow modules, seams, adapters, deletion test, testing strategy, vocabulary.
 - `references/readability-naming.md` — naming conventions and readability patterns by language.
 - `references/simplicity-mindsets/` — philosophical grounding for the simplicity lens; load when simplicity is the crux of a finding.

@@ -73,9 +73,9 @@ When the review surfaced a "code-judo" reframe or a deepening worth more than a 
 
 When the user asks to "write the review to a file": same content as the inline format, written as a single self-contained markdown file. Put it where the user asks; if unspecified, the OS temp dir (`$TMPDIR`, falling back to `/tmp`) as `code-review-<timestamp>.md` so nothing lands in the repo unless requested. Tell the user the absolute path.
 
-## Opt-in: HTML report mode (architecture-heavy reviews)
+## Opt-in: HTML report mode (explicit request only)
 
-When the review is dominated by architecture/deepening findings and visuals would carry the argument, offer a self-contained HTML report. Only when asked, or when you judge the structural story genuinely needs before/after diagrams.
+Produce an HTML report only when the user explicitly asks for one (e.g. "give me an HTML report", "I want before/after diagrams"). It is never the default and never auto-selected — even for architecture-heavy reviews, deliver the inline findings unless the user has asked for HTML.
 
 - Single self-contained file in the OS temp dir: `<tmpdir>/code-review-<timestamp>.html`. Never write it into the repo.
 - **Tailwind via CDN** for layout, **Mermaid via CDN** for graph-shaped diagrams (call graphs, dependencies, sequences). Mix Mermaid with hand-built divs/SVG for editorial visuals (before/after mass diagrams, layer cross-sections) — don't lean on Mermaid for everything or it looks generic.
