@@ -79,6 +79,26 @@ This usually means the backend built a tag name the upstream does not publish, o
 2. Prefer switching to a backend that exposes the binary reliably (`github:`/`aqua:`) over disabling verification.
 3. If you must relax aqua verification because upstream genuinely lacks a method, scope it with the `MISE_AQUA_*` env vars (see [security](https://mise.jdx.dev/security.html)) rather than disabling globally and silently.
 
+## "No asset found" / wrong architecture (aqua, github)
+
+Shape:
+
+```text
+mise ERROR Failed to install aqua:<owner>/<repo>@<ver>: no asset found: <tool>-<ver>-darwin-x86_64.tar.gz, <tool>-<ver>-darwin-universal.tar.gz
+Available assets: ... <tool>-<ver>-darwin-aarch64.tar.gz ...
+```
+
+The baked-in (or cached) aqua registry built an asset name the upstream no longer publishes, or mapped the host arch wrong — e.g. it asks for `darwin-x86_64` on an arm64 Mac, or a pre-rename name like `pnpm-macos-arm64`. Recurrent examples: pnpm v11 asset rename, `jc` darwin-aarch64.
+
+1. Read the real asset names from the release page or the "Available assets" line in the error.
+2. Refresh once: `mise cache clear`. If a stale baked registry is the cause, set `aqua.baked_registry = false` (or configure `aqua.registries`) to force the live registry.
+3. Switch to a backend that selects the asset correctly — usually `github:<owner>/<repo>` (same release, mise's own matching) or an explicit `aqua:` override. Confirm it resolves the host arch:
+   ```bash
+   mise registry <tool>
+   mise install 'github:<owner>/<repo>@<ver>'   # watch it pick the right asset
+   ```
+4. Avoid the deprecated `ubi:` backend for new fixes; `asdf:`/`vfox:` are last resorts with a supply-chain tradeoff.
+
 ## Prerelease dependency conflicts (pipx/uv)
 
 `uv` may refuse to resolve when a transitive dependency only has prerelease versions. Prefer a scoped fix over blanket prerelease allowance:
