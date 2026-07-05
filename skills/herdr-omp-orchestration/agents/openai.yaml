@@ -1,0 +1,4 @@
+interface:
+  display_name: "Herdr OMP Orchestration"
+  short_description: "Orchestrate issues via paired omp implementer/reviewer agents in herdr, to PR approval and merge."
+  default_prompt: "Use $herdr-omp-orchestration to implement a folder of issues: spawn an omp implementer and an opposite-model reviewer in herdr panes per issue, loop fix and re-review to LGTM, respect subscription headroom, then squash-merge and clean up."
