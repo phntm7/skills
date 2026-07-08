@@ -1,0 +1,4 @@
+interface:
+  display_name: "Craft MCP"
+  short_description: "Operate the Craft (craftdocs) MCP: read, search, create, and edit documents, pages, blocks, daily notes, tasks, and collections."
+  default_prompt: "Use $craft-mcp to read, search, create, or edit Craft documents, pages, blocks, daily notes, tasks, or collections via the Craft MCP tools."
