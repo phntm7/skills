@@ -1,0 +1,4 @@
+interface:
+  display_name: "Himalaya Email"
+  short_description: "Use the himalaya v2 email CLI: read, search, send, and manage mail across IMAP, SMTP, JMAP, Gmail, and Microsoft Graph."
+  default_prompt: "Use $himalaya-email to list, read, search, or send email with the himalaya CLI, switch accounts/backends, or debug a himalaya auth/backend error."
