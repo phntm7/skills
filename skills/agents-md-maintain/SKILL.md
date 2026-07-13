@@ -134,13 +134,24 @@ Use this compact format:
   material to referenced docs; target under 200 lines for each loaded
   instruction file.
 - Use "when X, do Y" rules and short rationale for unusual constraints.
+  Reserve absolute language (ALWAYS, NEVER, must) for true invariants; phrase
+  judgment calls as decision rules.
+- State each rule once. Current frontier models follow instruction contracts
+  closely; contradictions and redundancy destabilize behavior more than
+  missing detail.
 - Remove generic prompt boilerplate, motivational language, duplicated rules,
-  stale command lists, and large README copies.
-- Do not ask agents for hidden chain-of-thought. Ask for plans, checks, file
-  citations, diffs, and concise rationale.
-- Do not encode local secrets, personal preferences, or machine-specific paths
-  in shared repo files. Put personal notes in the appropriate local/user memory
-  file instead.
+  stale command lists, large README copies, and scaffolding written for older
+  models (forced status updates, repeated approval-seeking, step lists for
+  behavior current models perform reliably).
+- Keep autonomy boundaries in one place: what agents may do without asking
+  and what requires confirmation.
+- Do not ask agents for hidden chain-of-thought or to echo internal
+  reasoning. Ask for plans, checks, file citations, diffs, and concise
+  rationale.
+- Do not encode secrets, credentials, personal preferences, or
+  machine-specific paths in shared repo files. The file is repo-shipped and
+  prompt-injected; treat it as potentially public. Put personal notes in the
+  appropriate local/user memory file instead.
 
 ## Output Contract
 

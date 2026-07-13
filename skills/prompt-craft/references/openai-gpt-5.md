@@ -1,62 +1,90 @@
-# OpenAI GPT-5 Prompting Notes
+# OpenAI GPT-5 Family Prompting Notes
 
-Last verified: 2026-05-13
+Last verified: 2026-07-13
 
 ## Scope
 
-Use this reference for GPT-5.5, GPT-5.4, and smaller GPT-5.4 variants.
+Use this reference for GPT-5.6 Sol (primary), GPT-5.5, GPT-5.4, and smaller GPT-5.x variants.
 
-## GPT-5.5
+## GPT-5.6 Sol
 
-### Behavior and Tuning
+### Simplify First
 
-- Start from a small baseline prompt rather than carrying over old scaffolding.
-- Prefer outcome-first prompts: goal, success criteria, constraints, allowed side effects, evidence rules, and output shape.
-- Avoid detailed process instructions unless the exact path matters.
+- Start from a working prompt and remove one group of instructions, examples, or tools at a time, re-running the same evals. Leaner system prompts improved OpenAI's internal coding-agent evals ~10–15% while cutting tokens 41–66%; treat as directional and validate on your workload.
+- Trim: repeated rules, style/process instructions that don't change behavior, examples that don't change behavior, process steps the model already does reliably, irrelevant tools.
+- Keep: the user-visible outcome, success criteria and stopping conditions, safety/business/evidence/permission constraints, context-dependent tool-routing rules, required output shape.
+- GPT-5-class models follow prompt contracts closely: contradictions create more instability than missing detail. Audit remaining instructions for conflicts.
 
-### API Controls
+### Outcome-First Prompts and Stopping Conditions
 
-- Treat `reasoning.effort` and `text.verbosity` as configuration controls, not just prompt prose. Use higher reasoning only when evals show value.
-- Use Structured Outputs instead of embedding large JSON schema descriptions in the prompt when possible.
-- Put static prompt content first and dynamic user/session content last to improve prompt caching.
+- Describe the destination, not every step; the model chooses an efficient path when the prompt states what good looks like.
+- Reserve ALWAYS/NEVER/must/only for true invariants (safety rules, required fields, prohibited actions). For judgment calls (when to search, ask, iterate), give decision rules instead.
+- Add explicit stopping conditions: resolve in the fewest useful tool loops, but never let loop minimization outrank correctness, required evidence, or citations; after each result, check whether the core request is answerable, and if evidence is missing, name the missing fact and use the smallest useful fallback.
+- Preserve explicit user values; where values are implicit, give decision criteria rather than universal defaults or keyword maps.
 
-### Tool Use and Agentic Patterns
+### Verbosity, Personality, and Collaboration
 
-- Put most tool-specific guidance in tool descriptions: when to use the tool, required inputs, side effects, retry safety, and error modes.
-- For long-running agents, define state handoff, compaction content, progress behavior, and stopping rules.
+- More concise by default than GPT-5.5. Re-check whether "be concise" instructions are still needed—they can make output too brief. Use `text.verbosity` (`low`/`medium`/`high`) for the default level; use the prompt for task-specific length/structure.
+- Define personality (tone, warmth, directness) and collaboration style (when to ask, assume, take initiative, check work) separately; keep both short.
+- For short answers, give a priority order: name what must be preserved (facts, decisions, caveats, next steps) and what to trim first (introductions, repetition, reassurance).
+- Replace ambiguous labels ("friendly") with concrete writing choices; avoid blanket language rules like "always respond in the user's language" unless truly required.
+- For rewriting/editing, state what to preserve: artifact, length, structure, genre, factual claims; improve clarity without adding claims or promotional tone.
 
-## GPT-5.4
+### Autonomy and Approval Boundaries
 
-### Behavior and Tuning
+- Define what each request authorizes in one compact policy, stated once: read/explain/diagnose requests → inspect and report, don't implement; change/build/fix requests → make in-scope local changes and run non-destructive validation without asking; require confirmation for external writes, destructive actions, purchases, or scope expansion.
+- Name safe local actions explicitly (read files, inspect logs, edit in-scope code, run tests). Repeating "ask first"/"do not mutate" across sections causes unnecessary approval requests.
+- For long-running work, name the current layer (research, design, implementation, review, external coordination) so the model doesn't silently switch layers.
 
-- GPT-5.4 benefits from explicit output contracts, citation rules, tool-use expectations, and completion criteria.
-- Use compact, structured outputs to control token use alongside the API verbosity setting.
-- For research or evidence-heavy workflows, specify source collection, citation format, verification loops, and when to abstain.
+### Tool Routing and Programmatic Tool Calling
 
-### Tool Use and Agentic Patterns
+- Expose only task-relevant tools. Descriptions state what the tool does, when to use it, key return fields, error behavior.
+- State prerequisite retrieval explicitly: "Before acting, resolve required discovery, retrieval, and validation steps." Parallelize independent reads; sequence dependent ones; synthesize after parallel retrieval; try one or two meaningful fallbacks on empty/narrow results.
+- Programmatic Tool Calling (PTC): use only for bounded stages where code reduces many/large tool results to a compact schema (filtering, joining, batching, dedup, aggregation). Parallel or dependent calls alone don't justify it. Specify the bounded stage, eligible tools, output schema, retry limit, stop condition, and handoff back to direct calls. Test both the `program_output` and the final assistant message.
 
-- For tool workflows, include dependency checks and downstream-step checks so the model resolves prerequisites before acting.
-- For high-impact actions, require verification before execution.
-- Preserve returned assistant item state correctly in API integrations; `phase` handling matters for multi-step reasoning/tool flows.
+### Grounding and Retrieval Budgets
 
-## GPT-5.4 Mini and Nano
+- Make citation behavior part of the prompt: what needs support, what counts as enough evidence, behavior when evidence is missing. Absence of evidence must not become a factual "no."
+- Budget retrieval: one broad search first; further calls only for a missing required fact, exhaustive-coverage requests, a specific artifact, or an otherwise-unsupported important claim—never just to improve phrasing.
+- For research: cite only retrieved sources, attach citations to their claims, label inference separately from supported facts, state source conflicts, report missing evidence instead of guessing.
 
-- Smaller GPT-5.4 models need more explicit task structure and fewer implicit assumptions.
-- Use narrow tasks, exact step order, edge-case behavior, and one correct example.
-- Prefer closed outputs for tiny models: labels, enums, short JSON, or fixed templates.
-- Route ambiguous, planning-heavy, or multi-step orchestration tasks to a stronger model rather than over-prompting a small model.
+### Long-Running Workflows and API Controls
+
+- Prompt for a 1–2 sentence user-visible preamble before the first tool call, then sparse outcome-based updates at major phase changes only.
+- Preserve assistant `phase` values when replaying history; `previous_response_id` handles this automatically. Compact after major milestones, not every turn.
+- Persisted reasoning helps only while objective and assumptions stay stable; stale reasoning adds tokens and anchors to outdated approaches.
+- Reasoning effort: preserve the migrating app's current effort as baseline, test one level lower; `low` for latency-sensitive work, `medium` balanced, `high`/`xhigh` only when evals show gains, `max` reserved for hardest quality-first work. Before raising effort, check whether the prompt is missing a success criterion, dependency rule, or verification loop.
+- Validation: state which checks matter (targeted tests, type/lint, build, minimal smoke test) and require rendering/inspecting visual artifacts before finalizing.
+
+### Migration Workflow
+
+1. Switch model, preserve reasoning effort. 2. Run representative evals before touching the prompt. 3. Remove obsolete scaffolding, repeated instructions, irrelevant tools. 4. Add only the smallest targeted instruction fixing a measured regression. 5. Re-run evals after each change. Never rewrite a working stack all at once; debug regressions from a small set of real traces with surgical edits.
+
+## GPT-5.5 and GPT-5.4
+
+- Same outcome-first philosophy: goal, success criteria, constraints, allowed side effects, evidence rules, output shape; avoid detailed process instructions unless the path matters.
+- GPT-5.4 benefits from explicit output contracts, citation rules, and completion criteria; include dependency checks so prerequisites resolve before actions, and require verification before high-impact actions.
+- Use Structured Outputs instead of embedding large JSON schemas in prose. Put static content first, dynamic content last, for prompt caching.
+- Preserve returned assistant item state (`phase`) correctly in multi-step reasoning/tool flows.
+
+## GPT-5.x Mini and Nano
+
+- Smaller variants need explicit task structure and fewer implicit assumptions: narrow tasks, exact step order, edge-case behavior, one correct example.
+- Prefer closed outputs: labels, enums, short JSON, fixed templates.
+- Route ambiguous, planning-heavy, or multi-step orchestration to a stronger model rather than over-prompting a small one.
 
 ## Known Gotchas
 
-- Do not carry over every older prompt instruction automatically; benchmark a smaller baseline first.
-- Do not embed large schemas in prompt text when the API can enforce structured output.
-- For date-sensitive products, pass the required business timezone or policy date explicitly rather than relying on generic model date awareness.
+- Do not carry over old scaffolding automatically; benchmark a leaner baseline first.
+- Blanket brevity instructions on GPT-5.6 can over-shorten output.
+- Repeated approval-seeking rules cause unnecessary pauses on safe actions.
+- For date-sensitive products, pass the business timezone or policy date explicitly.
 
 ## Sources
 
-- GPT-5.5 latest model guide: https://developers.openai.com/api/docs/guides/latest-model.md
+- GPT-5.6 Sol prompting guidance: https://developers.openai.com/api/docs/guides/prompt-guidance-gpt-5p6
+- GPT-5.6 model guide: https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6
 - GPT-5.5 prompt guidance: https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.5
-- GPT-5.4 prompt guidance: https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.4
 - OpenAI prompt engineering overview: https://developers.openai.com/api/docs/guides/prompt-engineering
 - Reasoning models: https://developers.openai.com/api/docs/guides/reasoning
 - Structured Outputs: https://developers.openai.com/api/docs/guides/structured-outputs

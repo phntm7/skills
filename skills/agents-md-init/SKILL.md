@@ -130,21 +130,32 @@ system prompt, so prompting guidance applies.
 ## Writing Rules
 
 - Be concise, specific, and operational. A short accurate file beats a broad
-  policy document.
+  policy document. The file loads into the system prompt every session, so
+  each line must solve an observed problem, not a theoretical one.
 - Use Markdown headings and bullets. Keep commands in backticks or fenced code
   blocks.
 - Prefer "when X, run Y" instructions over personality traits or slogans.
+- State each rule once. Current frontier models follow instruction contracts
+  closely; contradictory or redundant rules destabilize behavior more than
+  missing detail, and a brief instruction steers a whole behavior class.
+- Reserve absolute language (ALWAYS, NEVER, must) for true invariants such as
+  safety rules and prohibited actions; phrase judgment calls as decision
+  rules. Give a one-line reason for unusual constraints.
+- State autonomy boundaries once: what agents may do without asking and what
+  requires confirmation. Do not scatter "ask first" across sections.
 - Include success criteria and verification gates for common workflows.
 - If a rule must run at a fixed lifecycle point, document or create a hook
   instead of relying only on an instruction file.
 - For task-specific procedures that do not need to load every session, create a
   skill instead of adding more content to `AGENTS.md` or `CLAUDE.md`.
-- Avoid asking agents to reveal chain-of-thought. Ask for conclusions, checks,
-  evidence, diffs, or concise rationale instead.
+- Avoid asking agents to reveal chain-of-thought or echo internal reasoning.
+  Ask for conclusions, checks, evidence, diffs, or concise rationale instead.
 - Avoid instructions that conflict with host-agent system messages, sandbox
   rules, approval policies, or tool availability.
 - Do not copy large sections from `README.md`; link or summarize only what an
   agent needs during code work.
+- Never include API keys, credentials, connection strings, or vulnerability
+  details; the file ships with the repo and enters every prompt.
 
 ## Output Contract
 
