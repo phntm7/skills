@@ -1,0 +1,4 @@
+interface:
+  display_name: "Surge CLI"
+  short_description: "Publish, update, inspect, and remove static sites with Surge."
+  default_prompt: "Use $surge-cli to publish or manage this static website on Surge, keeping free-plan limits and the existing project domain in mind."
