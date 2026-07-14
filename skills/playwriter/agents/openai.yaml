@@ -1,0 +1,4 @@
+interface:
+  display_name: "Playwriter"
+  short_description: "Drive the user's Chrome with Playwright snippets via the playwriter CLI."
+  default_prompt: "Use $playwriter to automate the browser: create your own session, drive your own page in state.page, and clean up the session when done."
