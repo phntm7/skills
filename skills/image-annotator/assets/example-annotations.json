@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "coordinateSpace": {
+    "width": 1568,
+    "height": 868
+  },
+  "defaults": {
+    "color": "#FF9F1C",
+    "negativeColor": "#E63946",
+    "strokeWidth": 4,
+    "fontSize": 22,
+    "style": "clean",
+    "seed": 20260716
+  },
+  "canvas": {
+    "gutter": {
+      "right": 360
+    },
+    "background": "#F8F9FA"
+  },
+  "legend": {
+    "position": "right",
+    "width": 360,
+    "title": "Review map",
+    "items": [
+      {
+        "number": 1,
+        "label": "Merge request summary"
+      },
+      {
+        "number": 2,
+        "label": "Description and evidence"
+      },
+      {
+        "number": 3,
+        "label": "Ownership and approval"
+      }
+    ]
+  },
+  "annotations": [
+    {
+      "type": "pixelate",
+      "x": 760,
+      "y": 36,
+      "width": 220,
+      "height": 44,
+      "blockSize": 10
+    },
+    {
+      "type": "box",
+      "x": 30,
+      "y": 24,
+      "width": 900,
+      "height": 88,
+      "radius": 10
+    },
+    {
+      "type": "badge",
+      "x": 955,
+      "y": 68,
+      "text": "1",
+      "radius": 20
+    },
+    {
+      "type": "box",
+      "x": 28,
+      "y": 184,
+      "width": 1110,
+      "height": 619,
+      "radius": 10
+    },
+    {
+      "type": "badge",
+      "x": 1162,
+      "y": 210,
+      "text": "2",
+      "radius": 20
+    },
+    {
+      "type": "callout",
+      "id": "ownership",
+      "bbox": [
+        1180,
+        184,
+        1525,
+        374
+      ],
+      "label": "Ownership and approval",
+      "number": 3,
+      "style": "neutral",
+      "placement": "auto",
+      "mark": "rounded-box",
+      "connector": "leader",
+      "padding": 12,
+      "avoid": [
+        [
+          1568,
+          0,
+          1928,
+          300
+        ]
+      ]
+    }
+  ]
+}

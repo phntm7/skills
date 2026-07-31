@@ -1,0 +1,4 @@
+interface:
+  display_name: "Image Annotator"
+  short_description: "Annotate or diff images with automatic, deterministic callouts."
+  default_prompt: "Use $image-annotator to annotate or diff existing static image files, resolve automatic callouts, render to a new file, and visually verify the artifact."
