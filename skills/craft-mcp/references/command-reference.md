@@ -25,12 +25,17 @@ images view --url <image-url>
 
 ```
 folders create --name <name> [--parent <folderId>] [--icon <emoji>]
+folders update --folder <folderId> [--name <name>] [--icon <emoji>] ; folders move --folder <folderId> --parent <folderId> ; folders delete --folder <folderId>
+documents create --title <title> [--folder <folderId>] [--destination unsorted|templates]   # -> rootBlockId (empty doc)
+documents create --documents '<json array>' [--folder <folderId>]
+documents move --document <rootBlockId> (--folder <folderId> | --destination unsorted|templates)
+documents delete --document <rootBlockId>          # soft-delete to trash (restore by moving out)
 blocks add --id <blockId> (--markdown <text> | --json <json>) [--position start|end]
 blocks add --date <date> (--markdown <text> | --json <json>) [--position start|end]
 blocks add --siblingId <blockId> (--markdown <text> | --json <json>) [--position before|after]
 blocks update --id <blockId> (--markdown <text> | --json <json>)
 blocks move --id <blockId> --targetId <blockId> [--position start|end]
-blocks delete --id <blockId>
+blocks delete --id <blockId|csv>          # or --ids <id1,id2,...> for bulk
 tasks add --markdown <text> [--state todo|done|canceled] [--schedule <date>] [--deadline <date>]
 tasks update --id <taskId> [--state ...] [--markdown <text>]
 tasks delete --id <taskId>
@@ -40,7 +45,7 @@ comments add --comments '[{"blockId":"<id>","content":"text"}]'
 whiteboards create ; whiteboards elements add|update|delete --whiteboard <id> ...
 ```
 
-There is **no `documents create`** — create documents as `page` blocks (see below).
+Create documents with `documents create` (returns a `rootBlockId`), or nest a `page` block inside an existing doc (see below).
 
 ## Block JSON types
 
@@ -59,13 +64,23 @@ There is **no `documents create`** — create documents as `page` blocks (see be
 - Shared optional fields: `indentationLevel` (0–5), `listStyle`, `decorations`, `color` (`#RRGGBB`), `taskInfo`.
 - Run `blocks learn <topic>` (write tool) for authoritative per-type field docs, e.g. `blocks learn page code table`.
 
-## Creating a document (page block)
+## Creating a document
+
+Primary path — a real doc, optionally filed in a folder:
+
+```
+documents create --title "📘 My Guide" [--folder <folderId>]
+```
+
+Returns a `rootBlockId` for an **empty** doc; fill it with `blocks add --id <rootBlockId> --markdown ...` (a multi-section markdown string splits into multiple typed blocks). Relocate later with `documents move`.
+
+Alternative — a nested sub-page inside an existing doc or daily note:
 
 ```
 blocks add --id <parentRootBlockId> --position end --json {"type":"page","markdown":"📘 My Guide"}
 ```
 
-The response returns the new page's block id; use it as the `--id` for subsequent `blocks add` calls that fill the page. A page block appears in `documents list`; the user can relocate it to top level in the app.
+The response returns the new page's block id; use it as the `--id` for subsequent `blocks add` calls. A page block appears in `documents list`.
 
 ## Internal links
 
@@ -113,3 +128,14 @@ General rules:
 - The `command` field is parsed shell-style. Wrap a multi-line value in **single quotes**; avoid apostrophes inside it (an `'` closes the quote).
 - Inside single quotes, `"`, `$`, and backticks are literal and safe.
 - If you must include apostrophes, switch to `--json` or a different quoting strategy.
+
+## Bare `<tag>` tokens (HTML rejection)
+
+A well-formed `<word>` in **plain** markdown text is parsed as HTML and rejected: `Unexpected HTML token` for a normal block, or `Expected inline markdown, got html` inside a table cell or heading. Triggers on `<model>`, `<tool>`, `<file>`, `<open>text</open>`, and the like.
+
+Safe as-is:
+- Inside a backtick code span: `` `<model>` `` or `` `foo <bar>` `` (even in a table cell).
+- Spaced comparisons: `a < b and c > d`.
+- The whitelisted `<callout>…</callout>` extension.
+
+Fix: wrap the token in backticks, or rephrase to a placeholder (`MODEL`, `TOOL`). The most common failure is a token in a **table cell** — cells are always inline-parsed.
