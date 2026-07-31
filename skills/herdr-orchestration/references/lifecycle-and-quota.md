@@ -19,15 +19,19 @@ graph TD
   FIX --> RER[same reviewer instance: re-review]
   RER -->|BLOCKING, cycles<3| FIX
   RER -->|BLOCKING, cycles=3| ESC[surface to operator]
-  REV -->|LGTM| DOCS[same implementer: docs pass if needed]
-  RER -->|LGTM| DOCS
-  DOCS --> MERGE[verify mergeable + squash merge]
+  REV -->|LGTM, actionable nits| NITS[one fix turn + light re-check]
+  RER -->|LGTM, actionable nits| NITS
+  NITS --> DOCS
+  REV -->|LGTM, clean| DOCS[same implementer: docs pass if needed]
+  RER -->|LGTM, clean| DOCS
+  DOCS -->|docs updated| DRC[light docs re-check] --> MERGE
+  DOCS -->|none needed| MERGE[oid-pinned squash merge per SKILL.md routing]
   MERGE --> TD[exit implementer, worktree remove, branch -D]
   TD --> DONE[done]
 ```
 
-- **Reuse both instances.** The implementer pane handles the first build and every fix cycle. The reviewer instance persists too: a claude reviewer subagent is continued with SendMessage; a codex reviewer is resumed with `codex exec resume <session-id>`. Never a fresh instance per cycle — accumulated context is the point.
-- **Gate on the verdict, not on finding text.** Read only the `VERDICT:` line and whether unresolved actionable items remain. The PR comment is the implementer↔reviewer handoff; do not relay findings yourself.
+- **Reuse both instances.** The implementer pane handles the first build and every fix cycle. The reviewer instance persists too: a claude subagent is continued with SendMessage, a headless claude reviewer with `claude -p --resume <session-id>`, a codex reviewer with `codex exec resume <session-id>`. Never a fresh instance per cycle — accumulated context is the point.
+- **Gate on the attested verdict, not on finding text.** Read only the `VERDICT:` line, the `Reviewed commit:` OID it attests, and whether unresolved actionable items remain; the verdict is valid only while the PR head equals that OID (capture a fresh OID before every review dispatch). The PR comment is the implementer↔reviewer handoff; do not relay findings yourself.
 - **Fix-cycle cap = 3.** After the 3rd BLOCKING verdict, escalate to the operator and leave both instances alive.
 
 ## Concurrency
@@ -35,9 +39,9 @@ graph TD
 - At most **2 issues in flight** (2 implementer panes; orchestrator-side reviewers don't count against the cap but do burn quota — factor them into headroom).
 - Each issue is its own worktree workspace. When both slots are full, queue the rest.
 - Free a slot only after full teardown (merge + worktree/workspace removed + branch deleted). Teardown is part of DONE, not optional hygiene — a merged PR with a live worktree is an unfinished issue.
-- **Stale sweep at session boundaries.** At session start and before ending a session, run `herdr worktree list --cwd <repo-root> --json` and tear down any worktree whose PR is merged or closed. Never leave stale worktrees behind.
+- **Stale sweep at session boundaries.** At session start and before ending a session, run `herdr worktree list --cwd <repo-root> --json` and tear down any worktree whose PR is **merged**. Closed-but-unmerged PRs may be intentionally retained — surface those to the operator instead of deleting. Never leave stale worktrees behind.
 - Advance one gating step at a time: block on the agent you need next; when that wait returns, take a single `herdr agent list` snapshot to catch the other issue's progress, act, then block again. That is event-driven, not polling.
-- A claude reviewer subagent runs in the background — dispatch it, then go service the other issue; its completion notification brings you back.
+- Claude reviewers (subagent or headless `claude -p`) and codex exec reviews all run in the background — dispatch, then go service the other issue; the completion notification brings you back.
 
 ## Quota headroom — asymmetric gates, always leave room
 
@@ -53,10 +57,10 @@ The reset-imminent exception exists because burning the tail of a window that's 
 Gate at three points, using `cclimits --json --claude --codex` (shape in [agent-clis.md](agent-clis.md); add `--cached` for repeated checks in one turn):
 
 1. **Before assigning models to an issue.** A gated family → pick the other family for that role (keeping the pairing opposite-family) or, if neither qualifies, queue the issue and self-wake at the soonest relevant reset. If a provider's `status` isn't `ok`, its quota is unmeasured — proceed, tell the operator, and let runtime quota errors be the stop.
-2. **Before each fix/re-review dispatch.** Re-check the two families on that issue. If one has crossed its gate, do not send its next turn; park it and self-wake.
+2. **Before every subsequent dispatch on an issue** — review, fix, re-review, and docs turns alike. Re-check the family you are about to spend. If it has crossed its gate, do not send that turn; park it and self-wake.
 3. **When a run fails on a provider quota/rate-limit error.** Treat that family as exhausted, read the real reset from cclimits, and self-wake.
 
-Graceful wind-down of an in-flight implementer: let its current turn finish (`herdr agent wait <target> --until idle`), then leave it parked — do not exit it; you resume it after reset by sending its next prompt. Record which issue/PR is parked, which family, and why. Claude-side note: the orchestrator itself burns the claude subscription — when claude is the tight window, prefer dispatching codex-side work and keep your own turns short.
+Graceful wind-down of an in-flight implementer: let its current turn finish (`herdr agent wait <target> --timeout <ms>`), then leave it parked — do not exit it; you resume it after reset by sending its next prompt. Record which issue/PR is parked, which family, and why. Claude-side note: the orchestrator itself burns the claude subscription — when claude is the tight window, prefer dispatching codex-side work and keep your own turns short.
 
 Report quota as provider + window + % used + reset countdown only; never print account ids or emails.
 

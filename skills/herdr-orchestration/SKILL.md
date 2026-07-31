@@ -20,8 +20,8 @@ Drive brief-free issue orchestration inside herdr using the claude and codex CLI
 
 You are the orchestrator, not the implementer.
 
-- Never write, edit, patch, commit, push, or merge code yourself. Every code change goes through a spawned agent.
-- You spawn agents, forward tasks, gate on the reviewer's verdict, manage subscription quota, merge approved PRs, and clean up.
+- Never write, edit, patch, commit, or push code yourself. Every code change goes through a spawned agent.
+- You spawn agents, forward tasks, gate on the reviewer's verdict, manage subscription quota, and clean up. Merging approved PRs is **your** job — the one git action you perform.
 - Per issue: exactly one implementer instance (a herdr pane) and one reviewer instance, both reused across every fix/re-review cycle. Never spawn a fresh implementer or reviewer per cycle.
 
 ## The one rule that shapes everything
@@ -36,12 +36,12 @@ Family separation is cheap here: Claude Code subagents inherit their parent's mo
 ## Preflight (once per session)
 
 1. Confirm `HERDR_ENV=1`. If not, stop: you are not inside herdr and cannot orchestrate.
-2. Find your own pane (`herdr pane list` → `"focused":true`) and rename it: `herdr agent rename <your-pane> "orch"`. Pane ids compact when panes close; self-address by the `orch` label.
+2. Identify your own pane — never via `"focused":true`, which another client can own. Resolve the id into a variable first, then rename: `pane="${HERDR_PANE_ID:-$(herdr pane current | jq -r .result.pane.pane_id)}"; herdr agent rename "$pane" "orch"` (adjust the jq path to the actual output on first use). Self-address by the `orch` label afterwards; pane ids compact when panes close. Agent names must match `^[a-z][a-z0-9_-]{0,31}$` — lowercase only.
 3. Confirm `gh auth status` works (you merge; agents post PR comments).
 4. Confirm `cclimits --json --claude --codex` returns both providers. This is your quota gate.
 5. Confirm both CLIs: `claude --version` and `codex --version`. Verified against claude 2.1.220, codex-cli 0.146.0, herdr 0.7.5 — if versions differ significantly, re-check flags with `--help` before relying on them.
 6. Spot-check the global skill set agents depend on: `ls ~/.agents/skills` should include `implement`, `code-review`, `diagnosing-bugs`, `tdd`, `codebase-design` (the Matt Pocock set) plus `deep-code-review`. If missing, tell the operator before dispatching.
-7. **Stale-worktree sweep.** `herdr worktree list --cwd <repo-root> --json`; for any worktree whose PR is already merged or closed (`gh pr list --head <branch> --state all`), tear it down now (worktree remove + branch delete). Repeat this sweep before ending the session — never leave stale worktrees behind.
+7. **Stale-worktree sweep.** `herdr worktree list --cwd <repo-root> --json`; for any worktree whose PR is **merged** (`gh pr list --head <branch> --state all`), tear it down now (worktree remove + branch delete). Closed-but-unmerged PRs may be intentionally retained — surface those to the operator instead of deleting. Repeat this sweep before ending the session — never leave stale worktrees behind.
 
 ## Inputs
 
@@ -85,18 +85,30 @@ Before assigning a model, check its quota window; if it lacks headroom, use the 
 
 Full command detail in [references/herdr-cli.md](references/herdr-cli.md) and [references/agent-clis.md](references/agent-clis.md); prompts in [references/agent-prompts.md](references/agent-prompts.md).
 
-Before creating anything, **check for existing state** (idempotency/resume): `gh pr list --head feature/<slug> --json number,state`, `herdr worktree list --json`. If a branch/PR/worktree already exists for the slug, resume it instead of creating a duplicate.
+Branch naming follows the repo's convention; `feature/<slug>` below is the default when the repo doesn't specify one.
+
+Before creating anything, **check for existing state** (idempotency/resume): `gh pr list --head feature/<slug> --state all --json number,state`, `herdr worktree list --json`, `git -C <repo-root> branch --list 'feature/<slug>'`. Resume by state, never duplicate:
+
+- PR **merged** → only leftovers remain: run teardown (step 9).
+- PR **closed but unmerged** → surface to the operator; don't reopen or delete on your own.
+- PR **open** + worktree present → re-enter the loop at the state the PR shows (no verdict yet → review; BLOCKING verdict → fix cycle; LGTM → docs/merge).
+- PR **open** but the worktree/workspace is gone → rebuild it from the existing branch: if the checkout still exists (`herdr worktree list --cwd <repo-root> --json` shows its path), `herdr worktree open --path <wt-path>`; otherwise `git -C <repo-root> worktree add <wt-path> feature/<slug>` then `herdr worktree open --path <wt-path>`. Redo worktree setup (env + deps), then re-enter the loop at the PR's state.
+- Branch or worktree exists but **no PR** → re-attach an implementer to the existing worktree (reopen a closed workspace with `herdr worktree open`) and continue implementation.
 
 1. **Worktree workspace.** `herdr worktree create --cwd <repo-root> --branch feature/<slug> --base <base> --label "<n> <slug>" --no-focus --json` — one call creates the git worktree and opens it as its own workspace. Then set it up: copy untracked env files (`.env*`) from the main checkout and install dependencies with the repo's package manager (see the herdr reference) — never symlink dependency dirs.
-2. **Implementer pane.** Find the workspace's root pane, then `herdr agent start "I<n>" --kind <claude|codex> --pane <pane-id> -- <model/effort/permission args>`. herdr detects readiness itself — no ready-marker scraping.
-3. **Implement.** Deliver the task with `herdr agent prompt <pane> "<text>" --wait --until idle --timeout <ms>`; for long prompts write a scratch file and send a one-liner pointing at it. The implementer works to acceptance, follows the universal YAGNI principle, runs the repo verify command, and opens a READY PR.
+2. **Implementer pane.** Find the workspace's root pane, then `herdr agent start "i<n>" --kind <claude|codex> --pane <pane-id> -- <model/effort/permission args>` (names must be lowercase). herdr detects readiness itself — no ready-marker scraping.
+3. **Implement.** Deliver the task with `herdr agent prompt <target> "<text>" --wait --timeout <ms>` — no explicit `--until`: the default matches `idle`, `done`, or `blocked`, and you classify the settled state afterwards with `herdr agent get`. For long prompts write a scratch file and send a one-liner pointing at it. The implementer works to acceptance, follows the universal YAGNI principle, runs the repo verify command, and opens a READY PR.
 4. **Find the PR deterministically:** `gh pr list --head feature/<slug> --json number,url,state` — never scrape the pane. If no PR exists and the agent is idle: nudge once with a completion prompt; if it still produces no PR, read the pane and escalate.
-5. **Review.** Codex-implemented → spawn a claude reviewer subagent (Agent tool, model per matrix) running `deep-code-review` against the PR and worktree. Claude-implemented → run `codex exec --sandbox read-only` review in the worktree. Either way the reviewer posts a PR comment ending `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The verdict comment is the only gate** — never `gh pr review --approve` (same GitHub account; self-approval is rejected).
-6. **Loop.** Read only the verdict line and unresolved actionable items from the PR:
-   - `BLOCKING` → send the **same implementer** a fix prompt (address every finding plus any bot/CI review, push `--force-with-lease`, reply on the PR), then the **same reviewer instance** a re-review (SendMessage to the subagent, or `codex exec resume <session-id>`). Cap: 3 cycles, then escalate to the operator.
+5. **Review.** First record the commit under review: `gh pr view <N> --json headRefOid` → `<review-oid>`, and put it in the review prompt (the reviewer states it in its Verification section). Codex-implemented → spawn a claude reviewer (subagent by default; headless `claude -p` when the matrix wants higher effort than your session — see the CLI reference). Claude-implemented → run `codex exec --sandbox read-only` review in the worktree. Both use the `code-review` skill (`deep-code-review` for hard-tier changes). A claude reviewer posts the PR comment itself; a codex reviewer (read-only sandbox) prints the review between markers and you post it verbatim (see the prompts reference). The comment ends `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The only gate is a verdict that attests `<review-oid>` while the PR head still equals it** — if the head moved during review, the verdict is void; re-review. Never `gh pr review --approve` (same GitHub account; self-approval is rejected).
+6. **Loop.** Act on the verdict line and unresolved actionable items:
+   - `BLOCKING` → send the **same implementer** a fix prompt (address every finding plus any bot/CI review, push `--force-with-lease`, reply on the PR), then the **same reviewer instance** a re-review (SendMessage to the subagent, `claude -p --resume <session-id>` for a headless claude reviewer, or `codex exec resume <session-id>`) with a **freshly captured** `<review-oid>` — every push voids the prior oid. Cap: 3 cycles, then escalate to the operator.
+   - `LGTM` but actionable non-blocking items remain → one fix turn for them, then a light reviewer re-check (not a full re-review); explicitly waived trivia gets a waiver note on the PR instead of silence.
    - `LGTM` with nothing unresolved → docs pass.
 7. **Docs.** Same implementer: update any docs the change requires and push; reviewer does a light docs-match re-check only if docs changed. Then merge.
-8. **Merge.** `gh pr view <N> --json state,mergeable,mergeStateStatus`. If not `CLEAN` (e.g. `BEHIND` after a sibling merge), send the implementer a rebase prompt and re-check. Merge only open/`MERGEABLE`/`CLEAN`: `gh pr merge <N> --squash` (no `--delete-branch`; the branch is checked out in the worktree).
+8. **Merge.** `gh pr view <N> --json state,mergeable,mergeStateStatus`. Route by state — not everything means "rebase":
+   - `BEHIND`/`DIRTY` → rebase prompt to the implementer. Any rebase changes the head oid, so get at least a light re-verdict after (a *conflicted* rebase gets a full re-review — conflict resolution is a code change).
+   - `UNSTABLE` (mergeable, checks pending/failing) → wait for CI or dispatch a fix; `BLOCKED` (required review/branch protection) → check what blocks; draft → have the implementer mark it ready; `UNKNOWN` → re-check once before acting.
+   - Open/`MERGEABLE`/`CLEAN` (or `HAS_HOOKS`) → `gh pr merge <N> --squash --match-head-commit <review-oid>` (no `--delete-branch`; the branch is checked out in the worktree). The `--match-head-commit` pin makes a push between gate and merge fail safely instead of merging unreviewed code.
 9. **Teardown.** Exit the implementer (`/exit` for claude, `/quit` for codex), wait for the pane to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout and closes the workspace) and delete the branch.
 
 ## Universal implementer principle
@@ -130,8 +142,8 @@ Mechanics:
 
 Never loop `agent list`/`pane read` to watch progress. Use blocking waits and self-scheduling:
 
-- Prompt-and-wait in one call: `herdr agent prompt <target> "<text>" --wait --until idle --timeout <ms>`.
-- Wait on an already-working agent: `herdr agent wait <target> --until idle --timeout <ms>`. On timeout, take one `herdr agent get <target>` snapshot — `blocked` or `error` means it needs help; read the pane and escalate rather than re-waiting.
+- Prompt-and-wait in one call: `herdr agent prompt <target> "<text>" --wait --timeout <ms>` — omit `--until` so the default matches any settled state (`idle`, `done`, or `blocked`), then classify with `herdr agent get`.
+- Wait on an already-working agent: `herdr agent wait <target> --timeout <ms>` (same default matching). `blocked` means it needs help; read the pane and escalate rather than re-waiting.
 - Long time-based waits (quota reset): detached self-wake, then end the turn.
 
 ## Naming for mobile (Moshi)
@@ -139,7 +151,7 @@ Never loop `agent list`/`pane read` to watch progress. Use blocking waits and se
 The operator reviews from a phone; keep labels short and issue-identifying:
 
 - Worktree workspace label: `<n> <slug>` ≤ ~18 chars (e.g. `12 auth-login`).
-- Implementer agent label: `I<n>`. Orchestrator pane: `orch`.
+- Implementer agent label: `i<n>` (lowercase — herdr rejects uppercase names). Orchestrator pane: `orch`.
 - PR title comes from the implementer per the repo's commit conventions.
 
 ## Reference selection
@@ -147,7 +159,7 @@ The operator reviews from a phone; keep labels short and issue-identifying:
 - [references/herdr-cli.md](references/herdr-cli.md) — verified herdr 0.7.5 commands: ids, worktree workspaces, `agent start --kind`, prompt/wait, artifact symlinks, teardown.
 - [references/agent-clis.md](references/agent-clis.md) — verified claude 2.1.220 and codex-cli 0.146.0 launch/headless/resume flags, effort mapping, cclimits quota shape.
 - [references/agent-prompts.md](references/agent-prompts.md) — implementer, reviewer, fix, re-review, and docs prompt skeletons plus the verdict format.
-- [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md) — the per-issue state machine, concurrency queueing, the 25%-headroom gate, and detached self-wake scheduling.
+- [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md) — the per-issue state machine, concurrency queueing, the quota headroom gates, and detached self-wake scheduling.
 
 ## Output contract
 

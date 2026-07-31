@@ -10,15 +10,20 @@ herdr uses compact live ids that **compact when things close** — always re-rea
 - tab: `w2:t1` (`<ws>:t<n>`)
 - pane: `w2:p2` (`<ws>:p<n>`)
 
-Most subcommands print JSON (`{"id":...,"result":{...}}`); `pane read`/`agent read` print text. Agent subcommands accept either a pane id or the agent's label as `<TARGET>` — prefer labels (`orch`, `I12`), they survive id compaction.
+Most subcommands print JSON (`{"id":...,"result":{...}}`); `pane read`/`agent read` print text. Agent subcommands accept either a pane id or the agent's label as `<TARGET>` — prefer labels (`orch`, `i12`), they survive id compaction.
 
 ## Find yourself
 
+Your own pane id is in `$HERDR_PANE_ID` (herdr sets it in every pane's environment). Resolve it into a variable before use — never pass a possibly-empty `$HERDR_PANE_ID` to a command:
+
 ```bash
-herdr pane list          # result.panes[]: {pane_id, tab_id, workspace_id, agent, agent_status, cwd, focused, terminal_id}
+pane="${HERDR_PANE_ID:-$(herdr pane current | jq -r .result.pane.pane_id)}"   # confirm the jq path on first use
+herdr agent rename "$pane" "orch"
 ```
 
-Your pane is the one with `"focused":true`. Rename yourself once — `herdr agent rename <your-pane> "orch"` — and self-address by the `orch` label thereafter.
+Self-address by the `orch` label thereafter. Do **not** identify yourself via `"focused":true` in `pane list` — focus is UI-global and another client (or the operator's phone) can own it.
+
+**Agent names must match `^[a-z][a-z0-9_-]{0,31}$`** — start with a lowercase letter, lowercase/digits/`-`/`_` only. `herdr agent start "I12" ...` fails with `invalid_agent_name`; use `i12`.
 
 ## Worktree workspaces (one per issue)
 
@@ -78,10 +83,10 @@ If the workspace has no pane at a shell (or you need another), create a tab in i
 Then start the agent **in that existing pane** — herdr runs the canonical executable, passes your extra args, and waits for interactive readiness (no ready-marker scraping):
 
 ```bash
-herdr agent start "I<n>" --kind claude --pane <pane-id> --timeout 60000 -- \
+herdr agent start "i<n>" --kind claude --pane <pane-id> --timeout 60000 -- \
   --model claude-opus-5 --effort high --permission-mode bypassPermissions
 
-herdr agent start "I<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
+herdr agent start "i<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
   -m gpt-5.6-sol -c model_reasoning_effort="high" --sandbox workspace-write -a never
 ```
 
@@ -96,23 +101,24 @@ herdr agent start "I<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
 `agent prompt` submits text and can wait for the settled state in one call:
 
 ```bash
-herdr agent prompt <target> "<text>" --wait --until idle --timeout <ms>
-# --until repeats: --until idle --until blocked   (default match: idle|done|blocked)
+herdr agent prompt <target> "<text>" --wait --timeout <ms>
 ```
+
+**Omit `--until`.** The default match is `idle|done|blocked` — exactly the settled states you want. An explicit `--until idle` matches *only* `idle`, so a turn that finishes as `done` (finished-but-unviewed) or stops at `blocked` (a question for you) would burn the whole timeout. After the wait returns, classify the state with `herdr agent get <target>`.
 
 Semantics worth knowing: after submission from a non-working state, `--wait` requires an observed state change within 5000 ms, else it returns `agent_prompt_stalled` (the prompt likely didn't land — investigate with `agent read`, don't blindly resend). It does not track turns: if the agent was already working, the current turn's completion may match.
 
 **File-based delivery for long prompts:** multi-line task briefs risk TUI paste/escaping issues. Write the full prompt to a scratch file and send a one-liner:
 
 ```bash
-herdr agent prompt I12 "Read <prompt-file> and follow it exactly." --wait --until idle --timeout 3600000
+herdr agent prompt i12 "Read <prompt-file> and follow it exactly." --wait --timeout 3600000
 ```
 
 ## Wait and observe
 
 ```bash
 # Wait on an already-working agent (single blocking call; never loop list/read):
-herdr agent wait <target> --until idle --timeout <ms>
+herdr agent wait <target> --timeout <ms>       # default match: idle|done|blocked
 # states: idle | working | blocked | done | unknown   (done = finished but unviewed)
 
 # One snapshot after a timeout — blocked/error means it needs help:
@@ -129,12 +135,13 @@ herdr pane wait-output <pane-id> --match "<text>" --timeout <ms>
 
 ```bash
 # 1. Exit the implementer CLI:
-herdr agent prompt I<n> "/exit"        # claude
-herdr agent prompt I<n> "/quit"        # codex   (if rejected, try Ctrl+D via: herdr pane send-keys <pane> C-d)
+herdr agent prompt i<n> "/exit"        # claude
+herdr agent prompt i<n> "/quit"        # codex   (if rejected, try Ctrl+D via: herdr pane send-keys <pane> C-d)
 
-# 2. Wait for the pane to return to a shell, confirm the agent is gone:
+# 2. Wait for the pane to return to a shell, then CONFIRM the agent is gone
+#    before any forced teardown — do not proceed on the wait alone:
 herdr pane wait-output <pane-id> --match "<your-shell-prompt>" --timeout 120000 || true
-herdr agent get I<n>                   # should be absent/undetected
+herdr agent get i<n>                   # must be absent/undetected; if still present, escalate
 
 # 3. Remove the worktree workspace and the branch:
 herdr worktree remove --workspace <ws> --force

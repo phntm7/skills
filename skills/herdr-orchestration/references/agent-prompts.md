@@ -22,7 +22,7 @@ Keep it simple (YAGNI): the smallest coherent implementation that meets acceptan
 - Use the globally installed skills instead of improvising workflow: drive the work with the `implement` skill; `diagnosing-bugs` when fixing a bug; `tdd` when the task or repo calls for test-first; `codebase-design` / `design-an-interface` / `domain-modeling` when the task shapes a new module, API, or domain concept; `research` or `wayfinder` to orient in unfamiliar territory. Other installed skills apply as relevant — don't reinvent what a skill covers.
 - Scope: this issue only. Match existing patterns; no drive-by refactors.
 {fan_out_line}
-- Branch is already checked out here: feature/{slug}. Commit per the repo's conventions.
+- Branch is already checked out here: {branch}. Commit per the repo's conventions.
 - Before handoff run {verify_cmd} and get it green.
 - Open a READY (not draft) PR against {base} with `gh pr create`. Map each acceptance criterion to what changed in the PR body{closes_clause}.
 - Do NOT merge. Never persist secrets (tokens, cookies, keys, credential-bearing URLs).
@@ -33,13 +33,21 @@ When done, print exactly: PR_NUMBER: <n>  (and any true blocker).
 
 - `{fan_out_line}` (claude implementers only) = `- For larger tasks, fan out to subagents to parallelize independent chunks; they run on your own model.` Omit for codex.
 - `{closes_clause}` = `; include "Closes #<N>"` for GitHub issues, else empty.
+- `{branch}` = the issue's branch per the repo's naming convention (default `feature/{slug}`).
 
 ## Reviewer (each review pass)
 
-Both reviewer kinds get the same routing line, prepended: `Use the code-review skill.` — or, for hard-tier changes (large refactors, deep-analysis work), `Use the deep-code-review skill.` The contract below is identical for claude subagent and codex exec reviewers.
+Both reviewer kinds get the same routing line, prepended: `Use the code-review skill.` — or, for hard-tier changes (large refactors, deep-analysis work), `Use the deep-code-review skill.`
+
+Posting differs by kind — swap the "Post the review" paragraph accordingly:
+
+- **Claude reviewer** (subagent/headless): posts the comment itself with `gh pr comment {N} --body-file <file>`.
+- **Codex reviewer** (read-only sandbox — cannot write files): replace that paragraph with: `Print the full review between a BEGIN_REVIEW line and an END_REVIEW line; the orchestrator posts it verbatim as the PR comment.` You then post it with `gh pr comment {N} --body-file <file>` yourself — relay the bytes exactly; never edit or summarize the review.
 
 ```text
 You are the code reviewer for PR #{N} in this worktree ({wt_path}). You do not write code.
+
+Commit under review: {review_oid}. Confirm the worktree HEAD and the PR head both equal it before reviewing; if not, stop and report the mismatch. State this exact OID in your ## Verification section — your verdict applies to this commit only.
 
 Context: {task_pointer} — the same acceptance criteria the implementer worked to.
 
@@ -64,11 +72,12 @@ Final line you print: the verdict word + PR number. Do NOT merge or push fixes.
 
 ## Verification
 1-3 lines: what you ran, what passed, the invariant you checked.
+Reviewed commit: {review_oid}
 
 VERDICT: LGTM        (or)  VERDICT: BLOCKING
 ```
 
-The orchestrator reads only the `VERDICT:` line and whether unresolved actionable items remain.
+The orchestrator reads only the `VERDICT:` line, the attested `Reviewed commit:` OID, and whether unresolved actionable items remain — from the **latest** verdict comment. The verdict is valid only while the PR head still equals the attested OID; any push voids it and requires a re-review with a freshly captured OID.
 
 ## Fix cycle (same implementer instance)
 
@@ -76,7 +85,9 @@ The orchestrator reads only the `VERDICT:` line and whether unresolved actionabl
 Address review feedback on PR #{N} in this worktree.
 
 Read ALL feedback, not just the reviewer's verdict comment:
-- `gh pr view {N} --json comments` — the VERDICT comment plus any bot/CI review comments.
+- `gh pr view {N} --json comments,reviews` — the VERDICT comment, PR reviews, and bot comments.
+- `gh api --paginate repos/{owner}/{repo}/pulls/{N}/comments` — inline review threads (not included above; paginate or you silently miss later pages).
+- `gh pr checks {N}` — failing CI, if the repo has it.
 
 Resolve EVERY actionable item — blocking and non-blocking. Do not skip small ones. If you disagree with a finding, reply on the PR explaining why instead of silently ignoring it.
 Re-run {verify_cmd}. Push with `git push --force-with-lease`.
@@ -88,13 +99,17 @@ Print exactly: FIXED  (and any blocker).
 
 ## Re-review (same reviewer instance — SendMessage or `codex exec resume`)
 
+Capture a fresh `{review_oid}` (`gh pr view {N} --json headRefOid`) after the fixes push, before dispatching — the old OID is stale by definition.
+
 ```text
 Re-review PR #{N} after fixes in this worktree ({wt_path}).
+
+Commit under review: {review_oid}. Confirm worktree HEAD and PR head equal it; state it as "Reviewed commit:" in ## Verification.
 
 The pushed fixes are already in this worktree — do NOT fetch, pull, or reset; re-read the current tree.
 Re-read the PR comments including the implementer's responses, and re-check every item from your previous VERDICT.
 Re-run {verify_cmd}.
-Post an updated comment with the VERDICT format (LGTM or BLOCKING). Do NOT run `gh pr review --approve`.
+Deliver the updated review with the VERDICT format (LGTM or BLOCKING) the same way as your first pass — claude: post the comment; codex: print between BEGIN_REVIEW/END_REVIEW markers for the orchestrator to post. Do NOT run `gh pr review --approve`.
 
 Final line: verdict word + PR number.
 ```
@@ -111,7 +126,7 @@ If nothing needs updating, do not push.
 Print exactly: DOCS: updated   (or)   DOCS: none-needed
 ```
 
-On `DOCS: updated`, run one light reviewer re-check (docs match behavior) before merge. On `DOCS: none-needed`, proceed straight to merge.
+On `DOCS: updated`, run one light reviewer re-check (docs match behavior) before merge — same posting/relay contract as a full review, verdict line included, and a freshly captured `{review_oid}` for the docs push (the merge pins to it). On `DOCS: none-needed`, proceed straight to merge with the last attested OID.
 
 ## Nudge (implementer idle without a PR — once, then escalate)
 

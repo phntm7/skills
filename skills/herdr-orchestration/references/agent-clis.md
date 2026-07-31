@@ -13,12 +13,21 @@ claude --model <claude-opus-5|claude-fable-5> --effort <low|medium|high|xhigh|ma
 
 - `--model` takes an alias (`opus`, `fable`) or full id (`claude-opus-5`, `claude-fable-5`). Prefer full ids in dispatch — aliases can drift across releases.
 - `--effort` maps 1:1 to the benchmark's reasoning-effort axis: `low, medium, high, xhigh, max`.
-- `--permission-mode bypassPermissions` keeps an unattended implementer from stalling on tool-approval prompts (the worktree is disposable; the reviewer gate catches bad changes). Do not depend on the operator's global settings.
+- `--permission-mode bypassPermissions` keeps an unattended implementer from stalling on tool-approval prompts. Be clear-eyed about the tradeoff: the worktree is not a security boundary (it holds copied `.env` credentials and has network access) — the protections are the reviewer gate, the merge gate, and secret discipline in the spawn prompts. This is the operator's accepted cost of unattended orchestration.
 - Family pinning is free: Claude Code subagents inherit the parent session's model, so an implementer's fan-out stays on its own family with no overlay mechanism. Tell claude implementers to fan out to subagents for larger tasks with independent chunks.
 
 ### Claude-side reviewer — a subagent, not a pane
 
-The orchestrator is itself a Claude Code session: spawn the reviewer with the **Agent tool** (`model: "opus"` per the matrix; `fable` for the hardest reviews), running the review prompt from [agent-prompts.md](agent-prompts.md). Continue the **same instance** for re-reviews via **SendMessage** — do not spawn a fresh reviewer per cycle. Run it in the background so you can keep orchestrating; its findings land as a PR comment, so you only read the verdict.
+The orchestrator is itself a Claude Code session: spawn the reviewer with the **Agent tool** (`model: "opus"` per the matrix; `fable` for the hardest reviews), running the review prompt from [agent-prompts.md](agent-prompts.md). Continue the **same instance** for re-reviews via **SendMessage** — do not spawn a fresh reviewer per cycle. Run it in the background so you can keep orchestrating; a claude reviewer posts the PR comment itself, so you only read the verdict.
+
+Selection rule: **subagent by default**; go headless only when the matrix demands `xhigh`+ review effort and your session runs lower — the Agent tool has no per-agent effort knob, a subagent inherits the session's effort. Headless, runnable form:
+
+```bash
+claude -p "$(cat <review-prompt-file>)" --model claude-opus-5 --effort xhigh \
+  --permission-mode bypassPermissions --output-format json
+```
+
+The JSON result includes the session id — record it, and continue the same reviewer with `claude -p --resume <session-id> "$(cat <re-review-prompt-file>)"`. `bypassPermissions` is needed because the reviewer runs the verify command and posts the PR comment unattended.
 
 ### Headless (fallback / scripting)
 
@@ -48,12 +57,12 @@ codex -m <gpt-5.6-sol|gpt-5.6-luna> -c model_reasoning_effort="<effort>" \
 ```bash
 codex exec -m gpt-5.6-sol -c model_reasoning_effort="xhigh" \
   --sandbox read-only --skip-git-repo-check -C <wt-path> \
-  "$(cat <review-prompt-file>)" 2>/dev/null
+  "$(cat <review-prompt-file>)" 2><stderr-file>
 ```
 
-- `read-only` sandbox: the reviewer physically cannot mutate the shared worktree. It can still write the PR comment because `gh` calls the GitHub API — if the sandbox blocks network, have the reviewer print the full review to stdout and post the comment yourself verbatim (you are relaying bytes, not writing the review).
-- `2>/dev/null` suppresses thinking tokens on stderr — but capture stderr to a file instead when you need the **session id** for resume (it appears in the startup banner): `2><stderr-file>`.
-- Run it as a background Bash task; a review at `xhigh` can take 10–25 minutes.
+- `read-only` sandbox: the reviewer physically cannot mutate the shared worktree — and cannot write temp files either, so it **cannot** use `gh pr comment --body-file`. The contract (see [agent-prompts.md](agent-prompts.md)): a codex reviewer prints the full review between `BEGIN_REVIEW`/`END_REVIEW` markers on stdout, and you post it verbatim as the PR comment (you are relaying bytes, not writing the review).
+- **Always capture stderr to a file** (never `2>/dev/null` on the initial run): the session UUID is in the startup banner, and you need it whenever the verdict comes back BLOCKING — `resume --last` is racy with two reviews in flight. Extract the UUID from the file **when the review task completes** (the banner is guaranteed present by then; reading it immediately after launch races the async write) and record it against the issue before acting on the verdict.
+- Run it as a background Bash task and act on its completion notification; a review at `xhigh` can take 10–25 minutes. Do not poll the output file.
 
 ### Re-review via resume
 
@@ -89,7 +98,7 @@ Verified output shape:
 ```
 
 - Credentials are auto-discovered (macOS Keychain for claude; `~/.codex/auth.json` for codex) — no setup in-session.
-- Codex plans have **weekly limits only** (no 5h window) — cclimits may report it under a key like `secondary_window`; check every window key present, not fixed names.
-- Gate rules (details in [lifecycle-and-quota.md](lifecycle-and-quota.md)): codex weekly `remaining ≤ 15%` → gated (unless reset ≤ ~12 h); claude 5h `remaining ≤ 20%` → gated (unless reset ≤ ~30 min).
+- The operator's codex plan has **weekly limits only** (no 5h window) — cclimits may report it under a key like `secondary_window`. Gate on **whatever windows cclimits actually reports** for each provider; never assume fixed key names or window sets.
+- Gate rules (details in [lifecycle-and-quota.md](lifecycle-and-quota.md)): any codex window `remaining ≤ 15%` → gated (unless its reset is ≤ ~12 h away); claude 5h `remaining ≤ 20%` → gated (unless reset ≤ ~30 min).
 - `used`/`remaining`/`resets_in` are humanized strings — parse them (`"2d 7h"` → seconds) when computing a self-wake delay.
 - A provider with `status` ≠ `ok` can't be measured: proceed but tell the operator its quota is unmeasured, and let runtime quota errors be the stop signal.
