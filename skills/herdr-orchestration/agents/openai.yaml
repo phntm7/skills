@@ -1,4 +1,4 @@
 interface:
   display_name: "Herdr Orchestration"
   short_description: "Orchestrate issues via claude/codex agents in herdr."
-  default_prompt: "Use $herdr-orchestration to implement a folder of issues: create a herdr worktree workspace per issue, launch a claude or codex implementer, review with the opposite model family, loop fix and re-review to LGTM, respect subscription headroom via cclimits, then squash-merge and clean up. Note: the orchestrator role requires Claude Code (claude-side reviews use its subagents)."
+  default_prompt: "Use $herdr-orchestration to implement a folder of issues: create a herdr worktree workspace per issue, launch a claude or codex implementer pane plus an opposite-family reviewer pane beside it, loop fix and re-review to LGTM, respect subscription headroom via cclimits, then squash-merge and clean up."

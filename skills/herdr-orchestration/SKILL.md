@@ -7,14 +7,14 @@ description: >
   merge. Use when acting as a herdr orchestrator that never writes code itself:
   give it a folder of issue files, GitHub issues, or a chat list of tasks and
   it creates herdr worktree workspaces, launches claude/codex implementers
-  (opus, fable, gpt-5.6-sol, gpt-5.6-luna), reviews via claude subagents and
-  headless codex exec, loops fix and re-review until LGTM, respects
-  subscription-limit headroom via cclimits, then merges and cleans up.
+  (opus, fable, gpt-5.6-sol, gpt-5.6-luna), reviews via opposite-family
+  reviewer agents in side-by-side panes, loops fix and re-review until LGTM,
+  respects subscription-limit headroom via cclimits, then merges and cleans up.
 ---
 
 # Herdr Orchestration
 
-Drive brief-free issue orchestration inside herdr using the claude and codex CLIs: per issue, create a worktree-backed workspace, launch one implementer agent in a pane, run the opposite-family PR review loop to approval, then squash-merge and tear everything down. The orchestrator itself runs in Claude Code — reviews on the claude side use its native subagents instead of extra panes.
+Drive brief-free issue orchestration inside herdr using the claude and codex CLIs: per issue, create a worktree-backed workspace, launch one implementer agent in a pane and one opposite-family reviewer agent in a pane split beside it, run the PR review loop to approval, then squash-merge and tear everything down. Both agents are visible panes the operator can watch — no headless background reviews, no sandboxes (all agents run in yolo/bypass mode).
 
 ## Role
 
@@ -22,16 +22,16 @@ You are the orchestrator, not the implementer.
 
 - Never write, edit, patch, commit, or push code yourself. Every code change goes through a spawned agent.
 - You spawn agents, forward tasks, gate on the reviewer's verdict, manage subscription quota, and clean up. Merging approved PRs is **your** job — the one git action you perform.
-- Per issue: exactly one implementer instance (a herdr pane) and one reviewer instance, both reused across every fix/re-review cycle. Never spawn a fresh implementer or reviewer per cycle.
+- Per issue: exactly one implementer pane and one reviewer pane, side by side in the issue's workspace, both reused across every fix/re-review cycle. Never spawn a fresh implementer or reviewer per cycle — accumulated context is the point.
 
 ## The one rule that shapes everything
 
 **A model never reviews its own work — reviewer and implementer are different model families.**
 
-- Codex implements → a Claude subagent of your own session reviews (spawn via the Agent tool, continue the same instance across cycles with SendMessage).
-- Claude implements → Codex reviews headlessly (`codex exec --sandbox read-only`, re-review via `codex exec resume`).
+- Codex implements → a claude reviewer pane reviews.
+- Claude implements → a codex reviewer pane reviews.
 
-Family separation is cheap here: Claude Code subagents inherit their parent's model, so a claude implementer's fan-out stays in-family automatically, and a codex reviewer in a read-only sandbox physically cannot touch the worktree.
+The reviewer runs in the same yolo mode as the implementer — no sandbox. The don't-touch-the-code discipline is contractual, not enforced: the reviewer prompt forbids edits, commits, and pushes, and the oid-pinned merge gate catches any unreviewed change regardless of who made it. Claude-side fan-out stays in-family automatically (Claude Code subagents inherit their parent's model).
 
 ## Preflight (once per session)
 
@@ -59,11 +59,11 @@ Route by problem character, not just size. Benchmark data (DeepSWE v1.1) and ope
 
 | Task character | Implementer | Reviewer |
 |---|---|---|
-| Easy, well-specified, mechanical | codex `gpt-5.6-luna` @ `max` | claude subagent `opus` @ `high` |
-| Standard feature work, broad multi-file changes | claude `opus` @ `high` | codex exec `gpt-5.6-sol` @ `xhigh` |
-| Surgical/precision changes in delicate code | codex `gpt-5.6-sol` @ `high`–`xhigh` | claude subagent `opus` @ `xhigh` |
+| Easy, well-specified, mechanical | codex `gpt-5.6-luna` @ `max` | claude `opus` @ `high` |
+| Standard feature work, broad multi-file changes | claude `opus` @ `high` | codex `gpt-5.6-sol` @ `xhigh` |
+| Surgical/precision changes in delicate code | codex `gpt-5.6-sol` @ `high`–`xhigh` | claude `opus` @ `xhigh` |
 | Hard but well-understood (large refactors) | claude `opus` @ `xhigh` or codex `sol` @ `xhigh` | opposite family @ `xhigh`+ |
-| Hard and poorly understood — deep analysis, gnarly debugging | claude `fable` @ `xhigh` | codex exec `sol` @ `max` |
+| Hard and poorly understood — deep analysis, gnarly debugging | claude `fable` @ `xhigh` | codex `sol` @ `max` |
 
 Qualitative traits the benchmark doesn't show (operator-verified):
 
@@ -99,17 +99,18 @@ Before creating anything, **check for existing state** (idempotency/resume): `gh
 2. **Implementer pane.** Find the workspace's root pane, then `herdr agent start "i<n>" --kind <claude|codex> --pane <pane-id> -- <model/effort/permission args>` (names must be lowercase). herdr detects readiness itself — no ready-marker scraping.
 3. **Implement.** Deliver the task with `herdr agent prompt <target> "<text>" --wait --timeout <ms>` — no explicit `--until`: the default matches `idle`, `done`, or `blocked`, and you classify the settled state afterwards with `herdr agent get`. For long prompts write a scratch file and send a one-liner pointing at it. The implementer works to acceptance, follows the universal YAGNI principle, runs the repo verify command, and opens a READY PR.
 4. **Find the PR deterministically:** `gh pr list --head feature/<slug> --json number,url,state` — never scrape the pane. If no PR exists and the agent is idle: nudge once with a completion prompt; if it still produces no PR, read the pane and escalate.
-5. **Review.** First record the commit under review: `gh pr view <N> --json headRefOid` → `<review-oid>`, and put it in the review prompt (the reviewer states it in its Verification section). Codex-implemented → spawn a claude reviewer (subagent by default; headless `claude -p` when the matrix wants higher effort than your session — see the CLI reference). Claude-implemented → run `codex exec --sandbox read-only` review in the worktree. Both use the `code-review` skill (`deep-code-review` for hard-tier changes). A claude reviewer posts the PR comment itself; a codex reviewer (read-only sandbox) prints the review between markers and you post it verbatim (see the prompts reference). The comment ends `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The only gate is a verdict that attests `<review-oid>` while the PR head still equals it** — if the head moved during review, the verdict is void; re-review. Never `gh pr review --approve` (same GitHub account; self-approval is rejected).
-6. **Loop.** Act on the verdict line and unresolved actionable items:
-   - `BLOCKING` → send the **same implementer** a fix prompt (address every finding plus any bot/CI review, push `--force-with-lease`, reply on the PR), then the **same reviewer instance** a re-review (SendMessage to the subagent, `claude -p --resume <session-id>` for a headless claude reviewer, or `codex exec resume <session-id>`) with a **freshly captured** `<review-oid>` — every push voids the prior oid. Cap: 3 cycles, then escalate to the operator.
+5. **Reviewer pane.** On first review, split the implementer's pane and start the opposite-family reviewer beside it: `herdr pane split --pane <impl-pane> --direction right --cwd <wt-path>`, then `herdr agent start "r<n>" --kind <opposite> --pane <new-pane> -- <model/effort/yolo args>`. This pane persists for the issue's whole life — every re-review goes to it.
+6. **Review.** First record the commit under review: `gh pr view <N> --json headRefOid` → `<review-oid>`, and put it in the review prompt (the reviewer states it in its Verification section). Deliver the review prompt to the reviewer pane with `herdr agent prompt r<n> ... --wait`. The reviewer uses the `code-review` skill (`deep-code-review` for hard-tier changes), also weighs any third-party bot reviews already on the PR, and posts the PR comment itself. The comment ends `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The only gate is a verdict that attests `<review-oid>` while the PR head still equals it** — if the head moved during review, the verdict is void; re-review. Never `gh pr review --approve` (same GitHub account; self-approval is rejected).
+7. **Loop.** Act on the verdict line and unresolved actionable items:
+   - `BLOCKING` → send the **same implementer pane** a fix prompt (address every finding — the reviewer's, third-party review bots', and CI's — push `--force-with-lease`, reply on the PR), then the **same reviewer pane** a re-review prompt with a **freshly captured** `<review-oid>` — every push voids the prior oid. Cap: 3 cycles, then escalate to the operator.
    - `LGTM` but actionable non-blocking items remain → one fix turn for them, then a light reviewer re-check (not a full re-review); explicitly waived trivia gets a waiver note on the PR instead of silence.
    - `LGTM` with nothing unresolved → docs pass.
-7. **Docs.** Same implementer: update any docs the change requires and push; reviewer does a light docs-match re-check only if docs changed. Then merge.
-8. **Merge.** `gh pr view <N> --json state,mergeable,mergeStateStatus`. Route by state — not everything means "rebase":
+8. **Docs.** Same implementer: update any docs the change requires and push; reviewer does a light docs-match re-check only if docs changed. Then merge.
+9. **Merge.** `gh pr view <N> --json state,mergeable,mergeStateStatus`. Route by state — not everything means "rebase":
    - `BEHIND`/`DIRTY` → rebase prompt to the implementer. Any rebase changes the head oid, so get at least a light re-verdict after (a *conflicted* rebase gets a full re-review — conflict resolution is a code change).
    - `UNSTABLE` (mergeable, checks pending/failing) → wait for CI or dispatch a fix; `BLOCKED` (required review/branch protection) → check what blocks; draft → have the implementer mark it ready; `UNKNOWN` → re-check once before acting.
    - Open/`MERGEABLE`/`CLEAN` (or `HAS_HOOKS`) → `gh pr merge <N> --squash --match-head-commit <review-oid>` (no `--delete-branch`; the branch is checked out in the worktree). The `--match-head-commit` pin makes a push between gate and merge fail safely instead of merging unreviewed code.
-9. **Teardown.** Exit the implementer (`/exit` for claude, `/quit` for codex), wait for the pane to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout and closes the workspace) and delete the branch.
+10. **Teardown.** Exit both agents (`/exit` for claude, `/quit` for codex), wait for their panes to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout, closes the workspace and both panes) and delete the branch.
 
 ## Universal implementer principle
 
@@ -123,14 +124,14 @@ Projects using this orchestrator rely on the globally installed Matt Pocock skil
 
 ## Concurrency
 
-Run at most **2 issues concurrently** (2 implementer panes; reviewers are orchestrator-side and don't count), and only while quota headroom allows. Honor `Blocked by`: do not dispatch an issue until its dependencies have merged. When you would exceed the cap, queue the next issue and start it when a slot frees. Dispatch or queue, then end the turn on a blocking wait — never let "how much I can finish" drive design.
+Run at most **2 issues concurrently** (up to 4 agent panes: one implementer + one reviewer per issue), and only while quota headroom allows. Honor `Blocked by`: do not dispatch an issue until its dependencies have merged. When you would exceed the cap, queue the next issue and start it when a slot frees. Dispatch or queue, then end the turn on a blocking wait — never let "how much I can finish" drive design.
 
 ## Quota headroom (both subscriptions are shared — always leave headroom)
 
 The operator uses both subscriptions elsewhere; this orchestrator must never drain them. The gates are asymmetric because the plans are:
 
 - **Codex** has only a **weekly** window (no 5h). Stop dispatching codex-side work when remaining ≤ **15%** — unless the weekly reset is imminent (≤ ~12 h), in which case finishing in-flight work is fine.
-- **Claude** gates on the **5h** window. Stop dispatching claude-side work (implementers, reviewer subagents — and keep your own turns short) when remaining ≤ **20%** — unless the reset is imminent (≤ ~30 min). Keep an eye on the claude weekly window too; if it becomes the binding constraint, surface that to the operator.
+- **Claude** gates on the **5h** window. Stop dispatching claude-side work (implementer and reviewer panes — and keep your own turns short) when remaining ≤ **20%** — unless the reset is imminent (≤ ~30 min). Keep an eye on the claude weekly window too; if it becomes the binding constraint, surface that to the operator.
 
 Mechanics:
 
@@ -151,13 +152,13 @@ Never loop `agent list`/`pane read` to watch progress. Use blocking waits and se
 The operator reviews from a phone; keep labels short and issue-identifying:
 
 - Worktree workspace label: `<n> <slug>` ≤ ~18 chars (e.g. `12 auth-login`).
-- Implementer agent label: `i<n>` (lowercase — herdr rejects uppercase names). Orchestrator pane: `orch`.
+- Implementer agent label: `i<n>`, reviewer label: `r<n>` (lowercase — herdr rejects uppercase names). Orchestrator pane: `orch`.
 - PR title comes from the implementer per the repo's commit conventions.
 
 ## Reference selection
 
-- [references/herdr-cli.md](references/herdr-cli.md) — verified herdr 0.7.5 commands: ids, worktree workspaces, `agent start --kind`, prompt/wait, artifact symlinks, teardown.
-- [references/agent-clis.md](references/agent-clis.md) — verified claude 2.1.220 and codex-cli 0.146.0 launch/headless/resume flags, effort mapping, cclimits quota shape.
+- [references/herdr-cli.md](references/herdr-cli.md) — verified herdr 0.7.5 commands: ids, worktree workspaces, pane splits, `agent start --kind`, prompt/wait, teardown.
+- [references/agent-clis.md](references/agent-clis.md) — verified claude 2.1.220 and codex-cli 0.146.0 launch flags (yolo mode for both), effort mapping, cclimits quota shape.
 - [references/agent-prompts.md](references/agent-prompts.md) — implementer, reviewer, fix, re-review, and docs prompt skeletons plus the verdict format.
 - [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md) — the per-issue state machine, concurrency queueing, the quota headroom gates, and detached self-wake scheduling.
 

@@ -80,14 +80,14 @@ herdr pane list          # filter result.panes[] by workspace_id from worktree c
 
 If the workspace has no pane at a shell (or you need another), create a tab in it: `herdr tab create --workspace <ws> --cwd <wt-path> --label "<short>" --no-focus` (also supports `--env K=V`).
 
-Then start the agent **in that existing pane** — herdr runs the canonical executable, passes your extra args, and waits for interactive readiness (no ready-marker scraping):
+Then start the agent **in that existing pane** — herdr runs the canonical executable, passes your extra args, and waits for interactive readiness (no ready-marker scraping). All agents launch in yolo mode — no sandboxes (see [agent-clis.md](agent-clis.md)):
 
 ```bash
 herdr agent start "i<n>" --kind claude --pane <pane-id> --timeout 60000 -- \
   --model claude-opus-5 --effort high --permission-mode bypassPermissions
 
 herdr agent start "i<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
-  -m gpt-5.6-sol -c model_reasoning_effort="high" --sandbox workspace-write -a never
+  -m gpt-5.6-sol -c model_reasoning_effort="high" --dangerously-bypass-approvals-and-sandbox
 ```
 
 - `--kind` supports `claude`, `codex` (among ~20 kinds); herdr detects the agent process and tracks its status.
@@ -95,6 +95,20 @@ herdr agent start "i<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
 - Default readiness timeout 30000 ms, max 300000.
 - See [agent-clis.md](agent-clis.md) for what the per-CLI args mean and why.
 - If detection misbehaves, `herdr agent explain <target>` shows the detection state.
+
+## Reviewer pane — split beside the implementer
+
+The reviewer is a second visible agent pane in the same workspace, side by side with the implementer. Create it at first review time by splitting the implementer's pane, then start the opposite-family agent in the new pane:
+
+```bash
+herdr pane split --pane <impl-pane-id> --direction right --cwd <wt-path>
+# read the new pane id from the JSON result (confirm shape on first use)
+
+herdr agent start "r<n>" --kind <claude|codex> --pane <new-pane-id> --timeout 60000 -- \
+  <same-style yolo args as above, model/effort per the review matrix>
+```
+
+The reviewer pane persists for the issue's whole life — deliver every review and re-review to it with `herdr agent prompt r<n> ... --wait`, exactly like implementer prompts. Never spawn a fresh reviewer per cycle, and never run reviews headlessly in the background.
 
 ## Deliver prompts (no send-keys dance)
 
@@ -134,16 +148,16 @@ herdr pane wait-output <pane-id> --match "<text>" --timeout <ms>
 ## Teardown recipe (per issue, after merge)
 
 ```bash
-# 1. Exit the implementer CLI:
-herdr agent prompt i<n> "/exit"        # claude
-herdr agent prompt i<n> "/quit"        # codex   (if rejected, try Ctrl+D via: herdr pane send-keys <pane> C-d)
+# 1. Exit both agent CLIs (implementer i<n> and reviewer r<n>):
+herdr agent prompt <target> "/exit"    # claude
+herdr agent prompt <target> "/quit"    # codex   (if rejected, try Ctrl+D via: herdr pane send-keys <pane> C-d)
 
-# 2. Wait for the pane to return to a shell, then CONFIRM the agent is gone
+# 2. Wait for each pane to return to a shell, then CONFIRM the agents are gone
 #    before any forced teardown — do not proceed on the wait alone:
 herdr pane wait-output <pane-id> --match "<your-shell-prompt>" --timeout 120000 || true
-herdr agent get i<n>                   # must be absent/undetected; if still present, escalate
+herdr agent get i<n>; herdr agent get r<n>   # must be absent/undetected; if still present, escalate
 
-# 3. Remove the worktree workspace and the branch:
+# 3. Remove the worktree workspace (closes both panes) and delete the branch:
 herdr worktree remove --workspace <ws> --force
 git -C <repo-root> branch -D feature/<slug>
 ```

@@ -14,12 +14,12 @@ graph TD
   W --> A
   S --> IMPL[implementer: build + verify + open PR]
   IMPL -->|idle, no PR| NUDGE[nudge once] --> IMPL
-  IMPL --> REV[reviewer: claude subagent OR codex exec + verdict]
+  IMPL --> REV[reviewer pane: review + verdict]
   REV -->|BLOCKING| FIX[same implementer: fix + push + reply]
   FIX --> RER[same reviewer instance: re-review]
   RER -->|BLOCKING, cycles<3| FIX
   RER -->|BLOCKING, cycles=3| ESC[surface to operator]
-  REV -->|LGTM, actionable nits| NITS[one fix turn + light re-check]
+  REV -->|LGTM, actionable nits incl. bot findings| NITS[one fix turn + light re-check]
   RER -->|LGTM, actionable nits| NITS
   NITS --> DOCS
   REV -->|LGTM, clean| DOCS[same implementer: docs pass if needed]
@@ -30,18 +30,19 @@ graph TD
   TD --> DONE[done]
 ```
 
-- **Reuse both instances.** The implementer pane handles the first build and every fix cycle. The reviewer instance persists too: a claude subagent is continued with SendMessage, a headless claude reviewer with `claude -p --resume <session-id>`, a codex reviewer with `codex exec resume <session-id>`. Never a fresh instance per cycle — accumulated context is the point.
+- **Reuse both panes.** The implementer pane handles the first build and every fix cycle. The reviewer pane persists too: every re-review is another `herdr agent prompt r<n>` to the same agent. Never a fresh instance per cycle — accumulated context is the point.
+- **Third-party bot reviews are part of the loop.** Automated review agents post to the PR shortly after it opens. The reviewer weighs their findings in its verdict; the implementer's fix cycles must resolve every actionable bot finding (including inline threads), not just the reviewer's.
 - **Gate on the attested verdict, not on finding text.** Read only the `VERDICT:` line, the `Reviewed commit:` OID it attests, and whether unresolved actionable items remain; the verdict is valid only while the PR head equals that OID (capture a fresh OID before every review dispatch). The PR comment is the implementer↔reviewer handoff; do not relay findings yourself.
 - **Fix-cycle cap = 3.** After the 3rd BLOCKING verdict, escalate to the operator and leave both instances alive.
 
 ## Concurrency
 
-- At most **2 issues in flight** (2 implementer panes; orchestrator-side reviewers don't count against the cap but do burn quota — factor them into headroom).
+- At most **2 issues in flight** — up to 4 agent panes (one implementer + one reviewer per issue). Reviewers burn quota like any agent; factor them into headroom.
 - Each issue is its own worktree workspace. When both slots are full, queue the rest.
 - Free a slot only after full teardown (merge + worktree/workspace removed + branch deleted). Teardown is part of DONE, not optional hygiene — a merged PR with a live worktree is an unfinished issue.
 - **Stale sweep at session boundaries.** At session start and before ending a session, run `herdr worktree list --cwd <repo-root> --json` and tear down any worktree whose PR is **merged**. Closed-but-unmerged PRs may be intentionally retained — surface those to the operator instead of deleting. Never leave stale worktrees behind.
 - Advance one gating step at a time: block on the agent you need next; when that wait returns, take a single `herdr agent list` snapshot to catch the other issue's progress, act, then block again. That is event-driven, not polling.
-- Claude reviewers (subagent or headless `claude -p`) and codex exec reviews all run in the background — dispatch, then go service the other issue; the completion notification brings you back.
+- Reviews are pane prompts like everything else: dispatch with `herdr agent prompt r<n> ... --wait`, or dispatch without `--wait`, service the other issue, and come back with `herdr agent wait r<n>`.
 
 ## Quota headroom — asymmetric gates, always leave room
 
