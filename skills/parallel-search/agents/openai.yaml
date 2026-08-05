@@ -1,0 +1,4 @@
+interface:
+  display_name: "Parallel Search"
+  short_description: "Web search, extraction, and deep research via the Parallel CLI"
+  default_prompt: "Use $parallel-search to search the web, extract pages as markdown, or run a deep research task with parallel-cli."
