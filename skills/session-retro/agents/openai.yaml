@@ -1,0 +1,4 @@
+interface:
+  display_name: "Session Retro"
+  short_description: "End-of-session retro on friction the agent hit."
+  default_prompt: "Let's conclude with a retro: what friction did you hit this session, and how do we make this repo easier for the next agent?"
