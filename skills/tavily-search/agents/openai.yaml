@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tavily Search"
+  short_description: "Web search, extraction, crawling, and research via the Tavily CLI"
+  default_prompt: "Use $tavily-search to search the web, extract pages, crawl docs, or run a cited research task with tvly."
