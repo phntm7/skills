@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Ops"
+  short_description: "GitHub via gh CLI: search, CI logs, PR comments, files"
+  default_prompt: "Use $github-ops to check why CI failed on this PR and fetch the reviewer comments."
