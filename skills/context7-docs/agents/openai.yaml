@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context7 Docs"
+  short_description: "Fetch current library docs with the ctx7 CLI"
+  default_prompt: "Use $context7-docs to look up the current API docs before writing this integration."
