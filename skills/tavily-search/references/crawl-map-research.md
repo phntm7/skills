@@ -76,7 +76,7 @@ tvly research status <request_id>
 tvly research poll <request_id>                             # block until done
 tvly research run "brief" --stream                          # live output
 tvly research run "brief" --output-schema schema.json       # structured JSON output
-tvly research run "brief" --citation-format numbered|mla|apa|chicago
+tvly research run "brief" --citation-format apa   # or: numbered, mla, chicago
 ```
 
 Response fields: `content` (the report), `sources`, `status`,

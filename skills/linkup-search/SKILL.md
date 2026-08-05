@@ -8,8 +8,10 @@ description: >
   offloading a multi-step research question to an autonomous research agent,
   or batch/async web lookups. Triggers: "search the web", "look up online",
   "fetch this page", "scrape", "research X in depth", "find recent news",
-  "linkup". Not for browser automation or authenticated pages (use a browser
-  tool instead).
+  "linkup". If more than one of the linkup/parallel-cli/tvly CLIs is
+  installed, consult the web-search-router skill first to pick the engine.
+  Not for browser automation or authenticated pages (use a browser tool
+  instead).
 ---
 
 # Linkup CLI

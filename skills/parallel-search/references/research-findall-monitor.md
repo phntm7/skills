@@ -27,7 +27,7 @@ when an agent or user is waiting.
 ## Running research from the CLI
 
 ```bash
-parallel-cli research run "brief" -p core-fast --text -o report --force
+parallel-cli research run "brief" -p core-fast --text -o report --timeout 600
 # → report.md (markdown w/ citations) + report.json (metadata)
 
 parallel-cli research run "brief" -p ultra --no-wait --json   # returns trun_ id
@@ -39,6 +39,8 @@ parallel-cli research processors                # list tiers + latencies
 - Query max 15,000 chars; `-f file` or `-` for stdin.
 - Results always save to disk (default `./parallel-research/<run_id>`);
   set `-o` deliberately so artifacts don't litter the project root.
+  Existing output files are never overwritten unless you pass `--force` —
+  prefer a fresh `-o` name over forcing.
 - Default output is API-chosen structured JSON ("auto" schema); `--text`
   switches to a markdown report, `--text-description` steers length/focus.
 - Poll defaults: 45 s interval, 3600 s timeout.
@@ -69,15 +71,18 @@ Discovers entities (companies, people) matching natural-language criteria.
 parallel-cli findall entity-search "Senior PMs at AI startups" -t people -n 25   # fast, best-effort
 parallel-cli findall run "Find AI companies that raised Series A in 2026" -g base -n 25
 parallel-cli findall run "..." --dry-run     # preview interpreted schema, no charge
-parallel-cli findall extend|enrich|result|status|poll|cancel ...
+# other subcommands: extend, enrich, result, status, poll, cancel
 ```
 
-Generator pricing: `preview` $0.10 flat; `base` $0.25 + $0.03/match;
-`core` (default) $2.00 + $0.15/match; `pro` $10.00 + $1.00/match. A
-`pro` run with `-n 100` can cost $110 — **confirm with the user before
-core/pro runs with high match limits.** Use `--dry-run` first to check the
-interpreted entity type and match conditions, and `entity-search` when a
-fast ranked list is enough.
+`entity-search` is priced per request: $0.005 including 100 results,
++$0.00005 per additional result — the cheap fast path.
+
+`findall run` generator pricing: `preview` $0.10 flat; `base` $0.25 +
+$0.03/match; `core` (default) $2.00 + $0.15/match; `pro` $10.00 +
+$1.00/match. A `pro` run with `-n 100` can cost $110 — **confirm with the
+user before core/pro runs with high match limits.** Use `--dry-run` first
+to check the interpreted entity type and match conditions, and
+`entity-search` when a fast ranked list is enough.
 
 ## Enrich — tabular data enrichment
 
@@ -103,7 +108,8 @@ processor to field complexity, not prestige.
 parallel-cli monitor create "New AI funding announcements" --frequency 6h
 parallel-cli monitor create "SEC filings from Tesla" --webhook https://example.com/hook
 parallel-cli monitor create --type snapshot --task-run-id trun_abc --frequency 1d
-parallel-cli monitor list | events <id> | trigger <id> | update <id> | cancel <id>
+parallel-cli monitor list
+# other subcommands: events <id>, trigger <id>, update <id>, cancel <id>
 ```
 
 Types: `event_stream` (default — tracks a search query for new events) and

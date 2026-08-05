@@ -8,8 +8,10 @@ description: >
   tier, entity discovery (FindAll), CSV/JSON data enrichment, or continuous
   web monitoring. Triggers: "search the web", "look up online", "fetch/extract
   this page", "research X in depth", "find all companies that...", "enrich
-  this list", "monitor the web for...", "parallel-cli", "Parallel API". Not
-  for browser automation or authenticated pages (use a browser tool instead).
+  this list", "monitor the web for...", "parallel-cli", "Parallel API". If
+  more than one of the linkup/parallel-cli/tvly CLIs is installed, consult
+  the web-search-router skill first to pick the engine. Not for browser
+  automation or authenticated pages (use a browser tool instead).
 ---
 
 # Parallel CLI
@@ -43,11 +45,15 @@ Auth: `PARALLEL_API_KEY` env var (overrides stored login) or
 | High-volume, latency-critical lookups | `search --mode turbo` | $0.001 | ~200 ms |
 | Most lookups and agent search steps | `search --mode basic` (CLI default) | $0.005 | ~1 s |
 | Highest-quality multi-hop retrieval per call | `search --mode advanced` | $0.005 | ~3 s |
-| Read specific URLs (JS pages, PDFs OK), focused on a goal | `fetch <urls...> --objective` | $0.001 | ~1 s |
+| Read specific URLs (JS pages, PDFs OK), focused on a goal | `fetch <urls...> --objective` | $0.001 **per URL** | ~1 s |
 | Verified answer or report from minutes of autonomous research | `research run -p <processor>` | $0.005–2.40 by tier | 10 s–2 h |
-| Discover a list of entities matching criteria | `findall run` / `findall entity-search` | $0.25–10 + per-match | min |
+| Fast ranked people/company list | `findall entity-search` | $0.005 (incl. 100 results) | 1–3 s |
+| Verified entity discovery with match evaluation | `findall run` | $0.10–10 fixed + per-match | min |
 | Enrich CSV/JSON rows with web data | `enrich run` | processor price × rows | min |
 | Track the web for changes over time | `monitor create` | $0.003–0.01/run | recurring |
+
+Search pricing includes 10 results; each additional result costs $0.001
+(so `--max-results 20` on basic ≈ $0.015).
 
 Escalate stepwise: basic search → advanced search → research at a low tier
 (`core-fast` ≈ $0.025, ~1 min) → higher tiers only for genuinely hard,
@@ -104,7 +110,8 @@ parallel-cli fetch URL1 URL2 --objective "what to pull from these pages" --json
 parallel-cli fetch URL --full-content        # whole-page markdown
 ```
 
-Batch up to 20 URLs per call ($0.001/request). Handles JS-heavy pages and
+Batch up to 20 URLs per call, billed $0.001 **per URL** (a full 20-URL
+batch costs $0.02). Handles JS-heavy pages and
 PDFs automatically — no render flag needed. With `--objective`/`-q` you get
 ranked excerpts focused on the goal; without them, whole-page markdown with
 boilerplate. Anonymous — no login walls. Common pattern: search (mode
@@ -118,7 +125,7 @@ the CLI polls and always saves results to disk (default
 
 ```bash
 parallel-cli research run "question or brief (max 15k chars)" \
-  -p core-fast --text -o /path/to/report --force
+  -p core-fast --text -o /path/to/report --timeout 600
 parallel-cli research run "..." -p pro --no-wait --json   # fire and poll later
 parallel-cli research status <run_id>; parallel-cli research poll <run_id>
 ```

@@ -68,7 +68,7 @@ agent to primary sources.
 ```bash
 id=$(linkup research "brief" --mode investigate --reasoning-depth M --json | jq -r .id)
 linkup research get "$id" --json          # status: pending|processing|completed|failed
-linkup research get "$id" --wait --json   # block until done
+linkup research get "$id" --wait --timeout 900 --json   # block until done
 linkup research list --page 1 --page-size 10
 ```
 
@@ -95,11 +95,14 @@ order:
 
 ```json
 [
-  { "type": "search", "input": { "q": "Datadog pricing", "depth": "standard", "outputType": "searchResults" } },
+  { "type": "search", "input": { "query": "Datadog pricing", "depth": "standard", "outputType": "searchResults" } },
   { "type": "fetch",  "input": { "url": "https://www.datadoghq.com/pricing/", "renderJs": true } }
 ]
 ```
 
+- Search task input takes `query` (verified against CLI v1.0.2 — the SDK
+  maps it to the wire field `q` itself; passing `q` directly leaves the
+  query undefined and the task fails).
 - >100 items: split into parallel batches; no penalty.
 - Dependent work (search results feeding fetches): submit the second batch
   after the first completes.

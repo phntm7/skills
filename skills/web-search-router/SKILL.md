@@ -38,7 +38,8 @@ On plain "search the web" the three are near-equal (benchmark totals
 | ---- | --- | -------------- |
 | Quick fact to ground a reply | Parallel turbo ($0.001) or Linkup fast (composed answer, $0.006) | `parallel-cli search -q "..." --mode turbo` |
 | General agent search step | Parallel basic (programming) / Tavily (docs lookup) — close call, any works | see sibling skills |
-| News, current events | **Tavily, unconditionally** (5/5 in benchmark) | `tvly search "..." --topic news --time-range week` |
+| News, current events | **Tavily** — first choice (5/5 in our single-run benchmark) | `tvly search "..." --topic news --time-range week` |
+| Regional news (e.g. Ukraine-local) | Tavily news topic *without* `--country`, query in the local language; cross-check with Linkup/Parallel general search | locale drift is Tavily's weak spot |
 | Live numbers: rates, prices | Tavily or Linkup (numbers appear in snippets); NOT Parallel raw search | `tvly search "..." --topic finance --include-answer advanced` |
 | LinkedIn profile / posts / comments | **Linkup only** | `linkup search "{linkedin_url} Return the profile details."` |
 | Entity lists, firmographics, people search | **Parallel** (licensed data) | `parallel-cli findall entity-search "..." -t companies` |
@@ -49,11 +50,11 @@ On plain "search the web" the three are near-equal (benchmark totals
 | Full page as markdown (incl. PDF) | any — all three parse PDFs well | cheapest: Linkup fetch $0.001 |
 | Structured JSON, one-shot | Linkup `--schema` (search tier, ~3 s, $0.006) | fresher but slower: Parallel enrich |
 | Image search | **Tavily** (`--include-image-descriptions`) | Linkup weaker, Parallel none |
-| Continuous monitoring / webhooks | **Parallel monitor** (only option) | `parallel-cli monitor create "..." --frequency 6h` |
+| Continuous monitoring / webhooks | **Parallel monitor** (only option); recurring cost — confirm with user first | `parallel-cli monitor create "..." --frequency 6h` |
 | Ukrainian / regional queries | Linkup (live trackers, Telegram) or Parallel (official service sites); query in the local language | Tavily third — locale drift |
-| Offloaded research, scoped question | Parallel `core-fast` ($0.025, ~1 min) or Tavily `mini` (~$0.05–0.2, best source discipline) | Linkup research is 10× pricier at entry |
+| Offloaded research, scoped question | Parallel `core-fast` ($0.025, ~1 min) or Tavily `mini` ($0.03–0.88 dynamic, best source discipline) | Linkup research is 10× pricier at entry |
 | Offloaded research, broad report | Parallel `pro`/`ultra` or Tavily `pro`; Linkup `investigate`/`research` for EU/LinkedIn-heavy topics | confirm cost with user first |
-| Bulk/batch lookups | Linkup tasks (100/batch) or Parallel task groups | Tavily CLI has no batch |
+| Bulk/batch lookups | **Linkup tasks** (CLI, 100/batch); Parallel's Task Group API is not exposed by `parallel-cli` (its CLI bulk path is `enrich` for tabular rows) | Tavily CLI has no batch |
 
 ## Failure modes — route around these
 
@@ -78,8 +79,8 @@ On plain "search the web" the three are near-equal (benchmark totals
 
 | | Linkup | Parallel | Tavily |
 | --- | --- | --- | --- |
-| Search | $0.005–0.006 (deep $0.05) | $0.001–0.005 | $0.008 (advanced $0.016) |
-| Fetch/extract | $0.001–0.005 | $0.001 | ~$0.0016/URL |
+| Search | $0.005–0.006 (deep $0.05) | $0.001–0.005 incl. 10 results, +$0.001/extra result | $0.008 (advanced $0.016) |
+| Fetch/extract | $0.001–0.005 | $0.001 **per URL** | ~$0.0016/URL |
 | Research | $0.25–2.50 | $0.005–2.40 | $0.03–2.00 (dynamic) |
 | Free tier | $20/mo credits | $5/mo + 5k req | 1,000 credits/mo |
 

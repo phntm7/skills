@@ -7,8 +7,10 @@ description: >
   content extraction, bulk documentation crawling, site URL discovery, or an
   AI research report with citations. Triggers: "search the web", "look up
   online", "find articles/news about", "fetch/extract this page", "crawl
-  these docs", "map this site", "research X in depth", "tvly", "tavily". Not
-  for browser automation or authenticated pages (use a browser tool instead).
+  these docs", "map this site", "research X in depth", "tvly", "tavily". If
+  more than one of the linkup/parallel-cli/tvly CLIs is installed, consult
+  the web-search-router skill first to pick the engine. Not for browser
+  automation or authenticated pages (use a browser tool instead).
 ---
 
 # Tavily CLI
@@ -129,7 +131,7 @@ or a scoped `crawl`.
 ## Research
 
 ```bash
-tvly research run "brief" --model mini --json -o report.json     # waits, ~30 s+
+tvly research run "brief" --model mini --timeout 300 --json -o report.json   # waits, ~30 s+
 tvly research run "brief" --model pro --no-wait                  # returns request_id
 tvly research status <id>; tvly research poll <id>
 tvly research run "brief" --output-schema schema.json            # structured output
