@@ -47,10 +47,10 @@ Useful commands:
 
 ```bash
 # List skills visible to the skills CLI from this repo
-DISABLE_TELEMETRY=1 npx skills add . --list
+DISABLE_TELEMETRY=1 skills add . --list
 
 # Install all skills globally into Codex and Claude Code via the skills CLI
-DISABLE_TELEMETRY=1 npx skills add git@github.com:phntm7/skills.git --skill '*' -g -a codex -a claude-code -y
+DISABLE_TELEMETRY=1 skills add git@github.com:phntm7/skills.git --skill '*' -g -a codex -a claude-code -y
 
 # Add this repo as a Codex plugin marketplace
 codex plugin marketplace add git@github.com:phntm7/skills.git
@@ -85,7 +85,7 @@ The `skills` CLI already discovers the current repo shape because it scans `skil
 
 Important behavior:
 
-- `npx skills add . --list` detects local skills without installing them.
+- `skills add . --list` detects local skills without installing them.
 - `--skill '*'` installs all discovered skills.
 - `-a codex -a claude-code` targets Codex and Claude Code.
 - `--copy` copies files instead of symlinking.
@@ -112,11 +112,11 @@ For one-off private repo operations, prefix commands with `DISABLE_TELEMETRY=1`.
 - Keep root `skills/` canonical. Avoid duplicating the same skills under `.agents/skills` or `.claude/skills` in this repo unless a specific local workflow requires it.
 - Keep `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.agents/plugins/marketplace.json`, and `.claude-plugin/marketplace.json` in sync with the repo's skill collection and version.
 - Keep `skills/<skill>/agents/openai.yaml` prompts accurate when renaming skills or changing their trigger behavior.
-- Bump plugin versions when publishing meaningful manifest or skill changes through plugin marketplaces.
+- Bump plugin versions when publishing meaningful manifest or skill changes through plugin marketplaces. Convention: a separate `chore(release): bump plugin version to X.Y.Z` commit after the change commits; minor bump for adding or removing a skill, patch for fixes. Version fields live in `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, and `.claude-plugin/marketplace.json` — `.agents/plugins/marketplace.json` has no version field.
 - Validate discovery before publishing:
 
 ```bash
-DISABLE_TELEMETRY=1 npx skills add . --list
+DISABLE_TELEMETRY=1 skills add . --list
 for skill in skills/*; do python3 skills/skill-create/scripts/validate_skill.py "$skill"; done
 python3 -m json.tool .codex-plugin/plugin.json >/dev/null
 python3 -m json.tool .claude-plugin/plugin.json >/dev/null
