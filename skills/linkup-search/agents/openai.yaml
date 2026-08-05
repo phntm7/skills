@@ -1,0 +1,4 @@
+interface:
+  display_name: "Linkup Search"
+  short_description: "Web search, page fetch, and deep research via the Linkup CLI"
+  default_prompt: "Use $linkup-search to search the web for current information, fetch a page as markdown, or run a deep research task."
