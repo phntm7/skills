@@ -1,0 +1,4 @@
+interface:
+  display_name: "DeepSWE Benchmark"
+  short_description: "Compare LLM coding performance via DeepSWE v1.1 leaderboard."
+  default_prompt: "Use $deepswe-benchmark to compare model performance and cost before picking a model."
