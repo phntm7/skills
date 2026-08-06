@@ -1,6 +1,6 @@
-# herdr CLI reference (0.7.5)
+# herdr CLI reference (0.8.0)
 
-Verified against **herdr 0.7.5**. Commands and flags below were checked live via `--help` and real invocations; JSON shapes marked "confirm on first use" were not exercised — read the actual output the first time and adapt. If your herdr version differs, confirm with `--help` before relying on a flag.
+Verified against **herdr 0.8.0**. Commands and flags below were checked live via `--help` and real invocations; JSON shapes marked "confirm on first use" were not exercised — read the actual output the first time and adapt. If your herdr version differs, confirm with `--help` before relying on a flag.
 
 ## Id formats (do not guess)
 
@@ -88,9 +88,12 @@ herdr agent start "i<n>" --kind claude --pane <pane-id> --timeout 60000 -- \
 
 herdr agent start "i<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
   -m gpt-5.6-sol -c model_reasoning_effort="high" --dangerously-bypass-approvals-and-sandbox
+
+herdr agent start "i<n>" --kind pi --pane <pane-id> --timeout 60000 -- \
+  --model opencode-go/deepseek-v4-flash:max -a
 ```
 
-- `--kind` supports `claude`, `codex` (among ~20 kinds); herdr detects the agent process and tracks its status.
+- `--kind` supports `claude`, `codex`, `pi` (among ~20 kinds); herdr detects the agent process and tracks its status.
 - The pane must be sitting at an interactive shell prompt.
 - Default readiness timeout 30000 ms, max 300000.
 - See [agent-clis.md](agent-clis.md) for what the per-CLI args mean and why.
@@ -98,13 +101,13 @@ herdr agent start "i<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
 
 ## Reviewer pane — split beside the implementer
 
-The reviewer is a second visible agent pane in the same workspace, side by side with the implementer. Create it at first review time by splitting the implementer's pane, then start the opposite-family agent in the new pane:
+The reviewer is a second visible agent pane in the same workspace, side by side with the implementer. Create it at first review time by splitting the implementer's pane, then start the cross-family agent in the new pane:
 
 ```bash
 herdr pane split --pane <impl-pane-id> --direction right --cwd <wt-path>
 # read the new pane id from the JSON result (confirm shape on first use)
 
-herdr agent start "r<n>" --kind <claude|codex> --pane <new-pane-id> --timeout 60000 -- \
+herdr agent start "r<n>" --kind <claude|codex|pi> --pane <new-pane-id> --timeout 60000 -- \
   <same-style yolo args as above, model/effort per the review matrix>
 ```
 
@@ -150,7 +153,7 @@ herdr pane wait-output <pane-id> --match "<text>" --timeout <ms>
 ```bash
 # 1. Exit both agent CLIs (implementer i<n> and reviewer r<n>):
 herdr agent prompt <target> "/exit"    # claude
-herdr agent prompt <target> "/quit"    # codex   (if rejected, try Ctrl+D via: herdr pane send-keys <pane> C-d)
+herdr agent prompt <target> "/quit"    # codex and pi   (if rejected, try Ctrl+D via: herdr pane send-keys <pane> C-d)
 
 # 2. Wait for each pane to return to a shell, then CONFIRM the agents are gone
 #    before any forced teardown — do not proceed on the wait alone:

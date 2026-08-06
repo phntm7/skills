@@ -1,20 +1,21 @@
 ---
 name: herdr-orchestration
 description: >
-  Orchestrate issue implementation by spawning Claude Code and Codex CLI
+  Orchestrate issue implementation by spawning Claude Code, Codex CLI, and pi
   implementer agents in herdr worktree workspaces, one workspace per issue,
-  driving an opposite-family PR review loop to approval and a gated squash
+  driving a cross-family PR review loop to approval and a gated squash
   merge. Use when acting as a herdr orchestrator that never writes code itself:
   give it a folder of issue files, GitHub issues, or a chat list of tasks and
-  it creates herdr worktree workspaces, launches claude/codex implementers
-  (opus, fable, gpt-5.6-sol, gpt-5.6-luna), reviews via opposite-family
-  reviewer agents in side-by-side panes, loops fix and re-review until LGTM,
-  respects subscription-limit headroom via cclimits, then merges and cleans up.
+  it creates herdr worktree workspaces, launches claude/codex/pi implementers
+  (opus, fable, gpt-5.6-sol, gpt-5.6-luna, deepseek-v4-flash, glm-5.2,
+  grok-4.5), reviews via cross-family reviewer agents in side-by-side panes,
+  loops fix and re-review until LGTM, respects subscription-limit headroom via
+  codexbar (cclimits fallback), then merges and cleans up.
 ---
 
 # Herdr Orchestration
 
-Drive brief-free issue orchestration inside herdr using the claude and codex CLIs: per issue, create a worktree-backed workspace, launch one implementer agent in a pane and one opposite-family reviewer agent in a pane split beside it, run the PR review loop to approval, then squash-merge and tear everything down. Both agents are visible panes the operator can watch — no headless background reviews, no sandboxes (all agents run in yolo/bypass mode).
+Drive brief-free issue orchestration inside herdr using the claude, codex, and pi CLIs: per issue, create a worktree-backed workspace, launch one implementer agent in a pane and one cross-family reviewer agent in a pane split beside it, run the PR review loop to approval, then squash-merge and tear everything down. Both agents are visible panes the operator can watch — no headless background reviews, no sandboxes (all agents run in yolo/bypass mode).
 
 ## Role
 
@@ -28,8 +29,8 @@ You are the orchestrator, not the implementer.
 
 **A model never reviews its own work — reviewer and implementer are different model families.**
 
-- Codex implements → a claude reviewer pane reviews.
-- Claude implements → a codex reviewer pane reviews.
+- Codex implements → a claude reviewer pane reviews, and vice versa.
+- pi models (DeepSeek, GLM, Grok) are three further distinct families: a pi implementer is reviewed by claude, codex, or a *different* pi model; a pi reviewer may review claude or codex work. `deepseek-v4-flash` is the budget reviewer of choice (operator-verified: noticeably more thorough review checks than its benchmark tier suggests).
 
 The reviewer runs in the same yolo mode as the implementer — no sandbox. The don't-touch-the-code discipline is contractual, not enforced: the reviewer prompt forbids edits, commits, and pushes, and the oid-pinned merge gate catches any unreviewed change regardless of who made it. Claude-side fan-out stays in-family automatically (Claude Code subagents inherit their parent's model).
 
@@ -38,8 +39,8 @@ The reviewer runs in the same yolo mode as the implementer — no sandbox. The d
 1. Confirm `HERDR_ENV=1`. If not, stop: you are not inside herdr and cannot orchestrate.
 2. Identify your own pane — never via `"focused":true`, which another client can own. Resolve the id into a variable first, then rename: `pane="${HERDR_PANE_ID:-$(herdr pane current | jq -r .result.pane.pane_id)}"; herdr agent rename "$pane" "orch"` (adjust the jq path to the actual output on first use). Self-address by the `orch` label afterwards; pane ids compact when panes close. Agent names must match `^[a-z][a-z0-9_-]{0,31}$` — lowercase only.
 3. Confirm `gh auth status` works (you merge; agents post PR comments).
-4. Confirm `cclimits --json --claude --codex` returns both providers. This is your quota gate.
-5. Confirm both CLIs: `claude --version` and `codex --version`. Verified against claude 2.1.220, codex-cli 0.146.0, herdr 0.7.5 — if versions differ significantly, re-check flags with `--help` before relying on them.
+4. Confirm the quota gate: `codexbar usage --json --provider opencodego` returns usage (fast local probe). If codexbar is missing, fall back to `cclimits --json --claude --codex` — it covers claude/codex only, so pi-side quotas (opencode-go, z.ai, grok) run unmeasured (see quota section).
+5. Confirm the agent CLIs you will dispatch: `claude --version`, `codex --version`, `pi --version`. Verified against claude 2.1.220, codex-cli 0.146.1, pi 0.84.0, codexbar 0.47.0, herdr 0.8.0 — if versions differ significantly, re-check flags with `--help` before relying on them.
 6. Spot-check the global skill set agents depend on: `ls ~/.agents/skills` should include `implement`, `code-review`, `diagnosing-bugs`, `tdd`, `codebase-design` (the Matt Pocock set) plus `deep-code-review`. If missing, tell the operator before dispatching.
 7. **Stale-worktree sweep.** `herdr worktree list --cwd <repo-root> --json`; for any worktree whose PR is **merged** (`gh pr list --head <branch> --state all`), tear it down now (worktree remove + branch delete). Closed-but-unmerged PRs may be intentionally retained — surface those to the operator instead of deleting. Repeat this sweep before ending the session — never leave stale worktrees behind.
 
@@ -55,7 +56,7 @@ If scope, acceptance location, or task order is genuinely ambiguous and unresolv
 
 ## Model selection (task character + quota)
 
-Route by problem character, not just size. Benchmark data (DeepSWE v1.1) and operator-verified traits both feed this matrix; always honor quota headroom and the opposite-family rule.
+Route by problem character, not just size. Benchmark data (DeepSWE v1.1) and operator-verified traits both feed this matrix; always honor quota headroom and the cross-family rule.
 
 | Task character | Implementer | Reviewer |
 |---|---|---|
@@ -64,22 +65,27 @@ Route by problem character, not just size. Benchmark data (DeepSWE v1.1) and ope
 | Surgical/precision changes in delicate code | codex `gpt-5.6-sol` @ `high`–`xhigh` | claude `opus` @ `xhigh` |
 | Hard but well-understood (large refactors) | claude `opus` @ `xhigh` or codex `sol` @ `xhigh` | opposite family @ `xhigh`+ |
 | Hard and poorly understood — deep analysis, gnarly debugging | claude `fable` @ `xhigh` | codex `sol` @ `max` |
+| Bulk well-specified work, or claude/codex quota is tight | pi `deepseek-v4-flash` @ `max` (alts: `grok-4.5` @ `high` when wall-clock matters, `glm-5.2` @ `max` as overflow) | any other family — claude/codex when they have headroom, else a different pi model |
 
 Qualitative traits the benchmark doesn't show (operator-verified):
 
 - **fable** is the smartest model — materially better than opus on genuinely hard problems despite benchmark parity. Reserve it for the hardest tier; don't "optimize" it away by re-reading leaderboards.
 - **opus** is a very good default for most claude-side work. Rare edge cases (scope creep, test bloat, occasional refusal) are handled by the universal YAGNI prompt line and the reviewer gate — no special guardrails.
 - **sol** is focused and meticulous: best for surgical changes and the most reliable reviewer.
-- **luna** at `max` is the cheap workhorse for well-specified tasks (best pass@4 on DeepSWE, ~$1–3/task after the 2026-07 price cut).
+- **luna** at `max` is the cheap codex-side workhorse for well-specified tasks (best pass@4 on DeepSWE, ~$1–3/task after the 2026-07 price cut).
+- The three **pi models** perform similarly to each other in operator tests (all ~53% pass@1 class @ their pinned efforts; glm trails on pass@1 but matches on pass@4). Differentiators: **deepseek-v4-flash** draws the least allowance by far and reviews most thoroughly — the default; **grok-4.5** is ~3× faster wall-clock (8 vs 24 min/task mean) but draws pricier allowance; **glm-5.2** is the overflow when the other two subs are gated.
+- Re-checked 2026-08 against DeepSWE v1.1 — the claude/codex picks above all still hold. Two near-misses, recorded so they aren't re-litigated: `gpt-5.6-terra` @ `max` (69.6%) is dominated (sol `xhigh` is better at the same cost, luna `max` cheaper at similar quality); `opus` @ `medium` (68.9%, ~half the cost of `high`) is the claude-side value fallback when the 5h window is tight.
 
 Hard rules (benchmark cliffs):
 
 - **luna: `max` only.** It collapses below that (`high` 44%, `medium` 11%, `low` 2% pass@1). Never dispatch luna below `max`.
 - **fable: `xhigh`, never `max`** (`max` adds nothing over `xhigh` at +61% cost).
 - **sol: never `low`;** its sweet spot is `high`, escalate to `xhigh`/`max` for hard work.
-- Efforts map 1:1 to CLI flags: claude `--effort <low|medium|high|xhigh|max>`, codex `-c model_reasoning_effort="<low|medium|high|xhigh|max>"`.
+- **pi models are workhorse-tier only** (~53% pass@1 class vs 67–73% for luna/sol/opus): easy/well-specified implementation and reviews — never hard-tier or surgical work.
+- **pi efforts are pinned: deepseek and glm at `max` thinking only** (glm collapses at `high`: 36% vs 44%; max is deepseek's benchmarked config), **grok at `high`** — `high` *is* its catalog ceiling (no `xhigh`/`max`).
+- Efforts map 1:1 to CLI flags: claude `--effort <low|medium|high|xhigh|max>`, codex `-c model_reasoning_effort="<low|medium|high|xhigh|max>"`, pi `--model <provider>/<model>:<level>` suffix (or `--thinking <level>`).
 
-Before assigning a model, check its quota window; if it lacks headroom, use the other family (keeping the pairing opposite) or wait (see quota section).
+Before assigning a model, check its quota window; if it lacks headroom, use another family (keeping the pairing cross-family) or wait (see quota section).
 
 ## Per-issue lifecycle
 
@@ -96,10 +102,10 @@ Before creating anything, **check for existing state** (idempotency/resume): `gh
 - Branch or worktree exists but **no PR** → re-attach an implementer to the existing worktree (reopen a closed workspace with `herdr worktree open`) and continue implementation.
 
 1. **Worktree workspace.** `herdr worktree create --cwd <repo-root> --branch feature/<slug> --base <base> --label "<n> <slug>" --no-focus --json` — one call creates the git worktree and opens it as its own workspace. Then set it up: copy untracked env files (`.env*`) from the main checkout and install dependencies with the repo's package manager (see the herdr reference) — never symlink dependency dirs.
-2. **Implementer pane.** Find the workspace's root pane, then `herdr agent start "i<n>" --kind <claude|codex> --pane <pane-id> -- <model/effort/permission args>` (names must be lowercase). herdr detects readiness itself — no ready-marker scraping.
+2. **Implementer pane.** Find the workspace's root pane, then `herdr agent start "i<n>" --kind <claude|codex|pi> --pane <pane-id> -- <model/effort/permission args>` (names must be lowercase). herdr detects readiness itself — no ready-marker scraping.
 3. **Implement.** Deliver the task with `herdr agent prompt <target> "<text>" --wait --timeout <ms>` — no explicit `--until`: the default matches `idle`, `done`, or `blocked`, and you classify the settled state afterwards with `herdr agent get`. For long prompts write a scratch file and send a one-liner pointing at it. The implementer works to acceptance, follows the universal YAGNI principle, runs the repo verify command, and opens a READY PR.
 4. **Find the PR deterministically:** `gh pr list --head feature/<slug> --json number,url,state` — never scrape the pane. If no PR exists and the agent is idle: nudge once with a completion prompt; if it still produces no PR, read the pane and escalate.
-5. **Reviewer pane.** On first review, split the implementer's pane and start the opposite-family reviewer beside it: `herdr pane split --pane <impl-pane> --direction right --cwd <wt-path>`, then `herdr agent start "r<n>" --kind <opposite> --pane <new-pane> -- <model/effort/yolo args>`. This pane persists for the issue's whole life — every re-review goes to it.
+5. **Reviewer pane.** On first review, split the implementer's pane and start the cross-family reviewer beside it: `herdr pane split --pane <impl-pane> --direction right --cwd <wt-path>`, then `herdr agent start "r<n>" --kind <other-family> --pane <new-pane> -- <model/effort/yolo args>`. This pane persists for the issue's whole life — every re-review goes to it.
 6. **Review.** First record the commit under review: `gh pr view <N> --json headRefOid` → `<review-oid>`, and put it in the review prompt (the reviewer states it in its Verification section). Deliver the review prompt to the reviewer pane with `herdr agent prompt r<n> ... --wait`. The reviewer uses the `code-review` skill (`deep-code-review` for hard-tier changes), also weighs any third-party bot reviews already on the PR, and posts the PR comment itself. The comment ends `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The only gate is a verdict that attests `<review-oid>` while the PR head still equals it** — if the head moved during review, the verdict is void; re-review. Never `gh pr review --approve` (same GitHub account; self-approval is rejected).
 7. **Loop.** Act on the verdict line and unresolved actionable items:
    - `BLOCKING` → send the **same implementer pane** a fix prompt (address every finding — the reviewer's, third-party review bots', and CI's — push `--force-with-lease`, reply on the PR), then the **same reviewer pane** a re-review prompt with a **freshly captured** `<review-oid>` — every push voids the prior oid. Cap: 3 cycles, then escalate to the operator.
@@ -110,7 +116,7 @@ Before creating anything, **check for existing state** (idempotency/resume): `gh
    - `BEHIND`/`DIRTY` → rebase prompt to the implementer. Any rebase changes the head oid, so get at least a light re-verdict after (a *conflicted* rebase gets a full re-review — conflict resolution is a code change).
    - `UNSTABLE` (mergeable, checks pending/failing) → wait for CI or dispatch a fix; `BLOCKED` (required review/branch protection) → check what blocks; draft → have the implementer mark it ready; `UNKNOWN` → re-check once before acting.
    - Open/`MERGEABLE`/`CLEAN` (or `HAS_HOOKS`) → `gh pr merge <N> --squash --match-head-commit <review-oid>` (no `--delete-branch`; the branch is checked out in the worktree). The `--match-head-commit` pin makes a push between gate and merge fail safely instead of merging unreviewed code.
-10. **Teardown.** Exit both agents (`/exit` for claude, `/quit` for codex), wait for their panes to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout, closes the workspace and both panes) and delete the branch.
+10. **Teardown.** Exit both agents (`/exit` for claude, `/quit` for codex and pi), wait for their panes to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout, closes the workspace and both panes) and delete the branch.
 
 ## Universal implementer principle
 
@@ -126,16 +132,21 @@ Projects using this orchestrator rely on the globally installed Matt Pocock skil
 
 Run at most **2 issues concurrently** (up to 4 agent panes: one implementer + one reviewer per issue), and only while quota headroom allows. Honor `Blocked by`: do not dispatch an issue until its dependencies have merged. When you would exceed the cap, queue the next issue and start it when a slot frees. Dispatch or queue, then end the turn on a blocking wait — never let "how much I can finish" drive design.
 
-## Quota headroom (both subscriptions are shared — always leave headroom)
+## Quota headroom (all subscriptions are shared — always leave headroom)
 
-The operator uses both subscriptions elsewhere; this orchestrator must never drain them. The gates are asymmetric because the plans are:
+The operator uses all five subscriptions elsewhere; this orchestrator must never drain any of them. Providers and their binding windows: **codex** — weekly only (no 5h); **claude** — 5h (weekly as secondary watch); **opencode-go** (deepseek) — 5h, plus weekly/monthly; **z.ai** (glm) — 5h tokens window; **grok** (Supergrok) — weekly.
 
-- **Codex** has only a **weekly** window (no 5h). Stop dispatching codex-side work when remaining ≤ **15%** — unless the weekly reset is imminent (≤ ~12 h), in which case finishing in-flight work is fine.
-- **Claude** gates on the **5h** window. Stop dispatching claude-side work (implementer and reviewer panes — and keep your own turns short) when remaining ≤ **20%** — unless the reset is imminent (≤ ~30 min). Keep an eye on the claude weekly window too; if it becomes the binding constraint, surface that to the operator.
+The gate is by window length, uniform across providers:
+
+- Windows **≤ 5h**: stop dispatching that family when remaining ≤ **20%** — unless the reset is imminent (≤ ~30 min). For claude this also means keeping your own turns short.
+- **Weekly/monthly** windows: stop when remaining ≤ **15%** — unless the reset is imminent (≤ ~12 h), in which case finishing in-flight work is fine.
+
+Gate each provider on **whatever windows codexbar actually reports**; if a longer window becomes the binding constraint for a short-window provider, surface that to the operator.
 
 Mechanics:
 
-- Check `cclimits --json --claude --codex` before every dispatch (add `--cached` for repeated checks in one turn).
+- Check `codexbar usage --json --provider <codex|claude|opencodego|zai|grok>` before every dispatch of that family — one provider per call. opencodego/zai/grok answer in ~0.2–2s; **claude and codex take ~15–25s** (API/web-dashboard sources) — run those two as parallel background jobs, and never use `--provider all` (30s+, and it drags in disabled providers as error objects). codexbar has no cache: reuse this turn's results instead of re-fetching; re-check only the family you are about to spend.
+- If codexbar is unavailable, fall back to `cclimits --json --claude --codex` (add `--cached` for repeated checks in one turn). cclimits does not cover opencode-go or grok — treat those as unmeasured providers: proceed, tell the operator, and let runtime quota errors be the stop signal.
 - If a family in flight crosses its gate, let the current turn finish, park the agent at the turn boundary (do not exit it — resume later by sending its next prompt), and self-wake at the window reset.
 - No idle spinning: compute the wait from the reset countdown, arm a detached self-wake addressed to your `orch` label, and end your turn. See [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md).
 
@@ -157,8 +168,8 @@ The operator reviews from a phone; keep labels short and issue-identifying:
 
 ## Reference selection
 
-- [references/herdr-cli.md](references/herdr-cli.md) — verified herdr 0.7.5 commands: ids, worktree workspaces, pane splits, `agent start --kind`, prompt/wait, teardown.
-- [references/agent-clis.md](references/agent-clis.md) — verified claude 2.1.220 and codex-cli 0.146.0 launch flags (yolo mode for both), effort mapping, cclimits quota shape.
+- [references/herdr-cli.md](references/herdr-cli.md) — verified herdr 0.8.0 commands: ids, worktree workspaces, pane splits, `agent start --kind`, prompt/wait, teardown.
+- [references/agent-clis.md](references/agent-clis.md) — verified claude, codex, and pi launch flags (yolo mode for all), effort/thinking mapping, codexbar quota shape and latencies, cclimits fallback.
 - [references/agent-prompts.md](references/agent-prompts.md) — implementer, reviewer, fix, re-review, and docs prompt skeletons plus the verdict format.
 - [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md) — the per-issue state machine, concurrency queueing, the quota headroom gates, and detached self-wake scheduling.
 

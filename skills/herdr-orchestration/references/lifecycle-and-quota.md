@@ -44,22 +44,22 @@ graph TD
 - Advance one gating step at a time: block on the agent you need next; when that wait returns, take a single `herdr agent list` snapshot to catch the other issue's progress, act, then block again. That is event-driven, not polling.
 - Reviews are pane prompts like everything else: dispatch with `herdr agent prompt r<n> ... --wait`, or dispatch without `--wait`, service the other issue, and come back with `herdr agent wait r<n>`.
 
-## Quota headroom — asymmetric gates, always leave room
+## Quota headroom — window-length gates, always leave room
 
-Both subscriptions are shared with the operator's other work. The gates differ because the plans differ:
+All five subscriptions are shared with the operator's other work. The gate depends on the window's length, not the provider:
 
-| Family | Binding window | Stop dispatching when | Exception |
+| Window length | Providers with such a binding window | Stop dispatching when | Exception |
 |---|---|---|---|
-| codex | weekly only (no 5h window) | remaining ≤ **15%** | weekly reset ≤ ~12 h away — finishing in-flight work is fine |
-| claude | 5h window | remaining ≤ **20%** | 5h reset ≤ ~30 min away |
+| ≤ 5h | claude (5h), opencode-go/deepseek (5h), z.ai/glm (5h tokens) | remaining ≤ **20%** | reset ≤ ~30 min away |
+| weekly/monthly | codex (weekly only — no 5h), grok (weekly) | remaining ≤ **15%** | reset ≤ ~12 h away — finishing in-flight work is fine |
 
-The reset-imminent exception exists because burning the tail of a window that's about to reset costs the operator nothing; parking work then would just waste wall-clock. Claude's weekly window is a secondary watch: if it becomes the binding constraint, surface that to the operator rather than silently gating on it.
+The reset-imminent exception exists because burning the tail of a window that's about to reset costs the operator nothing; parking work then would just waste wall-clock. Longer secondary windows (claude weekly, opencode-go weekly/monthly) are a secondary watch: if one becomes the binding constraint, surface that to the operator rather than silently gating on it.
 
-Gate at three points, using `cclimits --json --claude --codex` (shape in [agent-clis.md](agent-clis.md); add `--cached` for repeated checks in one turn):
+Gate at three points, using `codexbar usage --json --provider <p>` for the family you're about to spend (shape, latencies, and the cclimits fallback in [agent-clis.md](agent-clis.md); codexbar has no cache — reuse this turn's results for repeated checks):
 
-1. **Before assigning models to an issue.** A gated family → pick the other family for that role (keeping the pairing opposite-family) or, if neither qualifies, queue the issue and self-wake at the soonest relevant reset. If a provider's `status` isn't `ok`, its quota is unmeasured — proceed, tell the operator, and let runtime quota errors be the stop.
+1. **Before assigning models to an issue.** A gated family → pick another family for that role (keeping the pairing cross-family) or, if none qualifies, queue the issue and self-wake at the soonest relevant reset. If codexbar returns an `error` element for a provider (or, under the cclimits fallback, the provider isn't covered or `status` isn't `ok`), its quota is unmeasured — proceed, tell the operator, and let runtime quota errors be the stop.
 2. **Before every subsequent dispatch on an issue** — review, fix, re-review, and docs turns alike. Re-check the family you are about to spend. If it has crossed its gate, do not send that turn; park it and self-wake.
-3. **When a run fails on a provider quota/rate-limit error.** Treat that family as exhausted, read the real reset from cclimits, and self-wake.
+3. **When a run fails on a provider quota/rate-limit error.** Treat that family as exhausted, read the real reset from codexbar, and self-wake.
 
 Graceful wind-down of an in-flight implementer: let its current turn finish (`herdr agent wait <target> --timeout <ms>`), then leave it parked — do not exit it; you resume it after reset by sending its next prompt. Record which issue/PR is parked, which family, and why. Claude-side note: the orchestrator itself burns the claude subscription — when claude is the tight window, prefer dispatching codex-side work and keep your own turns short.
 
@@ -70,10 +70,11 @@ Report quota as provider + window + % used + reset countdown only; never print a
 For short waits (an agent finishing a turn), block on `herdr agent wait`/`agent prompt --wait`. For long waits (a quota window resetting in hours), do **not** hold a blocking call and do **not** poll. Arm a detached self-wake that re-prompts your own orchestrator pane at the reset time, then end your turn:
 
 ```bash
-# SECS parsed from cclimits resets_in (e.g. "1h 47m" -> 6420); floor at 30.
+# SECS = codexbar resetsAt (ISO-8601) minus now; with the cclimits fallback,
+# parse its humanized resets_in (e.g. "1h 47m" -> 6420). Floor at 30.
 [ "$SECS" -lt 30 ] && SECS=30
 nohup sh -c "sleep $SECS; \
-  herdr agent prompt orch 'RESUME: quota window reset — re-run cclimits and resume dispatch for the parked issues.'" \
+  herdr agent prompt orch 'RESUME: quota window reset — re-run the codexbar quota gate and resume dispatch for the parked issues.'" \
   >/dev/null 2>&1 &
 ```
 

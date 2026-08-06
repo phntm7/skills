@@ -1,6 +1,6 @@
-# claude + codex CLI reference
+# claude + codex + pi CLI reference
 
-Verified against **claude 2.1.220** and **codex-cli 0.146.0** (flags checked live; the codex model/effort combination `gpt-5.6-luna` + `max` verified end-to-end). If versions differ, confirm with `--help`.
+Verified against **claude 2.1.220**, **codex-cli 0.146.1**, and **pi 0.84.0** (flags checked live; the codex model/effort combination `gpt-5.6-luna` + `max` verified end-to-end). If versions differ, confirm with `--help`.
 
 Both implementer and reviewer agents run as **interactive panes** (via `herdr agent start`) in **yolo mode** — no sandboxes, no approval prompts. Sandboxes caused constant breakage (blocked writes, blocked `gh`, stalled approvals); the operator's accepted tradeoff is: the worktree is not a security boundary — the protections are the reviewer gate, the oid-pinned merge gate, and secret discipline in the spawn prompts. Re-review is simply another `herdr agent prompt` to the same pane: no session-id capture, no resume machinery.
 
@@ -43,7 +43,60 @@ codex -m <gpt-5.6-sol|gpt-5.6-luna> -c model_reasoning_effort="<effort>" \
 - Codex has no cross-family subagent fan-out; codex implementers work single-agent (sol is step-efficient, this is fine).
 - A codex reviewer pane launches the same way, with the reviewer prompt; since it is unsandboxed it posts PR comments itself with `gh pr comment --body-file`. The reviewer prompt forbids code changes — discipline is contractual, backed by the oid-pinned merge gate.
 
-## cclimits (the quota gate)
+## pi (implementer or reviewer panes — the budget workhorse families)
+
+### Interactive launch (inside a herdr pane, via `agent start --kind pi`)
+
+```bash
+pi --model opencode-go/deepseek-v4-flash:max -a    # primary workhorse
+pi --model xai/grok-4.5:high -a                    # ~3× faster wall-clock, pricier allowance
+pi --model zai/glm-5.2:max -a                      # overflow when the other two subs are gated
+```
+
+- **Only these three model/effort combos are approved** — the thinking level is pinned in the `:<level>` suffix (equivalently `--thinking <level>`). Catalog ceilings (verified in pi's models store): deepseek-v4-flash `high|max`; glm-5.2 up to `max`; grok-4.5 tops out at `high` — there is no grok `xhigh`/`max`.
+- pi has **no approval or sandbox system at all** — every tool call (read, bash, edit, write) runs unprompted; it is inherently yolo. The only startup gate is project-local file trust: pass `-a` (`--approve`) so a fresh worktree pane never stalls on the trust dialog.
+- Provider ↔ subscription ↔ codexbar mapping: `opencode-go/…` → OpenCode Go sub → `codexbar --provider opencodego`; `zai/…` → z.ai sub → `--provider zai`; `xai/…` → Supergrok sub → `--provider grok`.
+- No subagent fan-out; pi implementers work single-agent, like codex.
+- Exit for teardown: `/quit` (pi has no `/exit`).
+- Headless fallback (scripting only, never reviews): `pi -p "<prompt>"`; `pi -c "<follow-up>"` continues the previous session.
+
+## codexbar (the quota gate)
+
+```bash
+codexbar usage --json --provider <codex|claude|opencodego|zai|grok>
+```
+
+One provider per call. Measured latencies (codexbar 0.47.0): opencodego ~0.3 s (local), grok ~1 s, zai ~2 s, **claude ~17 s** (claude.ai API), **codex ~20 s** (OpenAI web dashboard). Check the two slow ones as parallel background jobs:
+
+```bash
+codexbar usage --json --provider claude >"$TMP/claude.json" &
+codexbar usage --json --provider codex  >"$TMP/codex.json"  &
+wait
+```
+
+- **Never use `--provider all`/`both` for gating** — 30 s+ and the output includes every disabled provider as an error object.
+- No cache flag: reuse this turn's results instead of re-fetching; re-check only the family you are about to spend.
+- Verified shape — an array with one element per provider; up to three rate windows plus optional extras:
+
+```jsonc
+[{
+  "provider": "opencodego", "source": "local",
+  "usage": {
+    "primary":   { "windowMinutes": 300,   "usedPercent": 11.1, "resetsAt": "2026-08-06T16:23:36Z" },
+    "secondary": { "windowMinutes": 10080, "usedPercent": 4.9, "resetsAt": "…" },
+    "tertiary":  { "windowMinutes": 43200, "usedPercent": 2.5, "resetsAt": "…" }  // windows may be null
+  },
+  "pace": { /* optional per-window projections; useful color, not the gate */ }
+}]
+// unmeasurable provider: {"provider": "…", "error": {"kind": "provider", "message": "…"}}
+```
+
+- Remaining % = `100 − usedPercent`. Gate by `windowMinutes`, not by key name: `≤ 300` → the 20% short-window gate, larger → the 15% weekly/monthly gate (details in [lifecycle-and-quota.md](lifecycle-and-quota.md)). Never assume which of primary/secondary/tertiary a provider populates.
+- `resetsAt` is ISO-8601 — compute self-wake seconds directly from it; no humanized-string parsing.
+- The JSON carries account emails/ids — never echo it raw into reports; extract windows only.
+- A provider whose element has `error` can't be measured: proceed, tell the operator its quota is unmeasured, and let runtime quota errors be the stop signal.
+
+### cclimits (fallback when codexbar is unavailable)
 
 ```bash
 cclimits --json --claude --codex            # live check
@@ -67,7 +120,6 @@ Verified output shape:
 ```
 
 - Credentials are auto-discovered (macOS Keychain for claude; `~/.codex/auth.json` for codex) — no setup in-session.
-- The operator's codex plan has **weekly limits only** (no 5h window) — cclimits may report it under a key like `secondary_window`. Gate on **whatever windows cclimits actually reports** for each provider; never assume fixed key names or window sets.
-- Gate rules (details in [lifecycle-and-quota.md](lifecycle-and-quota.md)): any codex window `remaining ≤ 15%` → gated (unless its reset is ≤ ~12 h away); claude 5h `remaining ≤ 20%` → gated (unless reset ≤ ~30 min).
+- Same gate rules as codexbar: gate on **whatever windows cclimits actually reports**; never assume fixed key names or window sets.
 - `used`/`remaining`/`resets_in` are humanized strings — parse them (`"2d 7h"` → seconds) when computing a self-wake delay.
-- A provider with `status` ≠ `ok` can't be measured: proceed but tell the operator its quota is unmeasured, and let runtime quota errors be the stop signal.
+- cclimits does **not** cover opencode-go or grok: under this fallback, pi-side deepseek and grok quotas are unmeasured (z.ai is available via `--zai` if configured). A provider with `status` ≠ `ok` is likewise unmeasured — proceed, tell the operator, and let runtime quota errors be the stop signal.

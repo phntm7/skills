@@ -31,7 +31,7 @@ Keep it simple (YAGNI): the smallest coherent implementation that meets acceptan
 When done, print exactly: PR_NUMBER: <n>  (and any true blocker).
 ```
 
-- `{fan_out_line}` (claude implementers only) = `- For larger tasks, fan out to subagents to parallelize independent chunks; they run on your own model.` Omit for codex.
+- `{fan_out_line}` (claude implementers only) = `- For larger tasks, fan out to subagents to parallelize independent chunks; they run on your own model.` Omit for codex and pi.
 - `{closes_clause}` = `; include "Closes #<N>"` for GitHub issues, else empty.
 - `{branch}` = the issue's branch per the repo's naming convention (default `feature/{slug}`).
 
