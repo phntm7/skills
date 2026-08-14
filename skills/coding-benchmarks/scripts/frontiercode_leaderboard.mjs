@@ -34,31 +34,40 @@
 //   node frontiercode_leaderboard.mjs [--fresh] [--json]
 //                                     [--version v1_1|v1] [--subset main|extended]
 //                                     [--metric pass|score] [--all]
+//                                     [--models <patterns>] [--effort <patterns>]
 //     --fresh     ignore cache TTL and refetch now
 //     --json      print compact JSON rows instead of markdown
 //     --version   benchmark revision id (default: v1_1; v1 is archived)
 //     --subset    task subset (default: main; extended = 150 tasks)
 //     --metric    ranking metric (default: pass; score = rubric score)
 //     --all       one row per model x effort instead of best-effort-per-model
+//     --models    comma-separated model ids, names, families, or globs
+//     --effort    comma-separated effort levels or globs
 // Requires Node >= 18 (global fetch).
 
 import { readFileSync, writeFileSync, mkdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import {
+  CACHE_TTL_MS,
+  cacheMetadata,
+  filterRowsByEffort,
+  hasFlag,
+  listOptionValues,
+  optionValue,
+  selectModels,
+  canonicalModelId,
+} from "./benchmark_common.mjs";
 
 const BASE = "https://cognition.com/data/frontiercode-leaderboard/data.json";
-const TTL_MS = 24 * 60 * 60 * 1000;
 
 const args = process.argv.slice(2);
-const flag = (f) => args.includes(f);
-const opt = (f, d) => {
-  const i = args.indexOf(f);
-  return i !== -1 && args[i + 1] ? args[i + 1] : d;
-};
-const VERSION = opt("--version", "v1_1");
-const SUBSET = opt("--subset", "main");
-const METRIC = opt("--metric", "pass");
-const ALL = flag("--all");
+const VERSION = optionValue(args, "--version", "v1_1");
+const SUBSET = optionValue(args, "--subset", "main");
+const METRIC = optionValue(args, "--metric", "pass");
+const ALL = hasFlag(args, "--all");
+const MODEL_PATTERNS = listOptionValues(args, "--models");
+const EFFORT_PATTERNS = listOptionValues(args, "--effort");
 const CACHE_DIR = join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "frontiercode-bench");
 const CACHE_FILE = join(CACHE_DIR, `${VERSION}.json`);
 
@@ -77,8 +86,12 @@ if (!["pass", "score"].includes(METRIC)) {
 
 function readCache() {
   try {
-    const age = Date.now() - statSync(CACHE_FILE).mtimeMs;
-    return { json: JSON.parse(readFileSync(CACHE_FILE, "utf8")), age };
+    const age = Math.max(0, Date.now() - statSync(CACHE_FILE).mtimeMs);
+    return {
+      json: JSON.parse(readFileSync(CACHE_FILE, "utf8")),
+      age,
+      fetchedAt: new Date(Date.now() - age).toISOString(),
+    };
   } catch {
     return null;
   }
@@ -93,47 +106,49 @@ async function fetchLive() {
   if (!rev || !Array.isArray(rev.models)) throw new Error(`unexpected payload shape: missing revision "${VERSION}"`);
   mkdirSync(CACHE_DIR, { recursive: true });
   writeFileSync(CACHE_FILE, JSON.stringify(rev));
-  return rev;
+  return { json: rev, fetchedAt: new Date().toISOString() };
 }
 
 async function load() {
   const cached = readCache();
-  if (cached && cached.age < TTL_MS && !flag("--fresh")) return { json: cached.json, fromCache: true, age: cached.age };
+  if (cached && cached.age < CACHE_TTL_MS && !hasFlag(args, "--fresh")) {
+    return { ...cached, fromCache: true, stale: false };
+  }
   try {
-    return { json: await fetchLive(), fromCache: false, age: 0 };
+    const live = await fetchLive();
+    return { ...live, fromCache: false, age: 0, stale: false };
   } catch (e) {
     if (cached) {
       console.error(`WARN: fetch failed (${e.message}); using stale cache (${(cached.age / 3.6e6).toFixed(1)}h old)`);
-      return { json: cached.json, fromCache: true, age: cached.age };
+      return { ...cached, fromCache: true, stale: true };
     }
     throw e;
   }
 }
 
-// Best row for a model: highest value of the ranking metric across its
-// efforts at the selected subset (mirrors the site's leaderboard chart).
-function bestRow(rev, model) {
-  let best = null;
-  for (const effort of rev.efforts[model] || []) {
-    const row = rev.data[model]?.[effort]?.[SUBSET];
-    if (!row) continue;
-    const val = METRIC === "score" ? row.new_score : row.correct;
-    if (val == null) continue;
-    if (!best || val > best.val) best = { effort, val, row };
-  }
-  return best;
-}
-
-function allRows(rev) {
+function rawRows(rev, models = rev.models) {
   const rows = [];
-  for (const model of rev.models) {
+  for (const model of models) {
     for (const effort of rev.efforts[model] || []) {
       const row = rev.data[model]?.[effort]?.[SUBSET];
       if (!row) continue;
-      rows.push({ model, effort, val: METRIC === "score" ? row.new_score : row.correct, row });
+      const val = METRIC === "score" ? row.new_score : row.correct;
+      rows.push({ model, effort, val, row });
     }
   }
   return rows;
+}
+
+function bestRows(rows) {
+  const best = new Map();
+  for (const candidate of rows) {
+    if (candidate.val == null) continue;
+    const current = best.get(candidate.model);
+    if (!current || candidate.val > current.val) {
+      best.set(candidate.model, candidate);
+    }
+  }
+  return [...best.values()];
 }
 
 const pct = (x) => (x == null ? "" : (x * 100).toFixed(1));
@@ -144,6 +159,7 @@ const effortLabel = (e) => (e == null || e === "none" ? "-" : e);
 function compactRow(rev, model, effort, row) {
   return {
     model,
+    model_id: canonicalModelId(model),
     harness: rev.harness[model] || null,
     effort: effort === "none" ? null : effort,
     pass_pct: row.correct == null ? null : +(row.correct * 100).toFixed(1),
@@ -154,10 +170,24 @@ function compactRow(rev, model, effort, row) {
   };
 }
 
-function markdown(rev, meta) {
-  const raw = ALL ? allRows(rev) : rev.models.map((m) => { const b = bestRow(rev, m); return b && { model: m, ...b }; });
-  const rows = raw
-    .filter(Boolean)
+function selectRows(rev) {
+  const modelSelection = selectModels(rev.models, MODEL_PATTERNS);
+  const raw = rawRows(rev, modelSelection.names);
+  const effortSelection = filterRowsByEffort(raw, EFFORT_PATTERNS, (candidate) => candidate.effort);
+  return {
+    rows: ALL ? effortSelection.rows : bestRows(effortSelection.rows),
+    unmatchedModels: modelSelection.unmatched,
+    unmatchedEfforts: effortSelection.unmatched,
+  };
+}
+
+function reportUnmatched(selection) {
+  if (selection.unmatchedModels.length) console.error(`WARN: unmatched models: ${selection.unmatchedModels.join(", ")}`);
+  if (selection.unmatchedEfforts.length) console.error(`WARN: unmatched efforts: ${selection.unmatchedEfforts.join(", ")}`);
+}
+
+function markdown(rev, meta, selection) {
+  const rows = selection.rows
     .sort((a, b) => b.val - a.val || (a.row.cost ?? 0) - (b.row.cost ?? 0));
 
   let md = `# FrontierCode ${VERSION} leaderboard — ${SUBSET} subset (${rev.subsets[SUBSET] ?? "?"} tasks)\n\n`;
@@ -177,12 +207,12 @@ function markdown(rev, meta) {
   return md;
 }
 
-const { json: rev, fromCache, age } = await load();
+const { json: rev, fromCache, age, stale, fetchedAt } = await load();
+const selection = selectRows(rev);
+reportUnmatched(selection);
 const meta = fromCache ? `Cached ${(age / 3.6e6).toFixed(1)}h ago.` : "Fetched now.";
-if (flag("--json")) {
-  const raw = ALL ? allRows(rev) : rev.models.map((m) => { const b = bestRow(rev, m); return b && { model: m, ...b }; });
-  const rows = raw
-    .filter(Boolean)
+if (hasFlag(args, "--json")) {
+  const rows = selection.rows
     .sort((a, b) => b.val - a.val || (a.row.cost ?? 0) - (b.row.cost ?? 0))
     .map((r) => compactRow(rev, r.model, r.effort, r.row));
   console.log(
@@ -192,6 +222,12 @@ if (flag("--json")) {
         subset: SUBSET,
         n_tasks: rev.subsets[SUBSET],
         metric: METRIC,
+        ...cacheMetadata({ fromCache, age, stale, fetchedAt }),
+        row_mode: ALL ? "all" : "best-effort",
+        requested_models: MODEL_PATTERNS,
+        unmatched_models: selection.unmatchedModels,
+        requested_efforts: EFFORT_PATTERNS,
+        unmatched_efforts: selection.unmatchedEfforts,
         rows,
       },
       null,
@@ -199,5 +235,5 @@ if (flag("--json")) {
     )
   );
 } else {
-  console.log(markdown(rev, meta));
+  console.log(markdown(rev, meta, selection));
 }
