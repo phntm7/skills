@@ -7,10 +7,11 @@ description: >
   merge. Use when acting as a herdr orchestrator that never writes code itself:
   give it a folder of issue files, GitHub issues, or a chat list of tasks and
   it creates herdr worktree workspaces, launches claude/codex/pi implementers
-  (opus, fable, gpt-5.6-sol, gpt-5.6-luna, deepseek-v4-flash, glm-5.2,
-  grok-4.5), reviews via cross-family reviewer agents in side-by-side panes,
-  loops fix and re-review until LGTM, respects subscription-limit headroom via
-  codexbar (cclimits fallback), then merges and cleans up.
+  (opus, fable, gpt-5.6-sol, gpt-5.6-luna, deepseek-v4-flash,
+  deepseek-v4-pro, grok-4.6), reviews via cross-family reviewer
+  agents in side-by-side panes, loops fix and re-review until LGTM, respects
+  subscription-limit headroom via codexbar (cclimits fallback), then merges
+  and cleans up.
 ---
 
 # Herdr Orchestration
@@ -22,6 +23,7 @@ Drive brief-free issue orchestration inside herdr using the claude, codex, and p
 You are the orchestrator, not the implementer.
 
 - Never write, edit, patch, commit, or push code yourself. Every code change goes through a spawned agent.
+- Act as the supervisor, not a passive dispatcher: watch progress at bounded checkpoints, steer drift early, interrupt clearly wrong or unsafe work, and verify every handoff. Let sound work proceed without micromanaging it.
 - You spawn agents, forward tasks, gate on the reviewer's verdict, manage subscription quota, and clean up. Merging approved PRs is **your** job — the one git action you perform.
 - Per issue: exactly one implementer pane and one reviewer pane, side by side in the issue's workspace, both reused across every fix/re-review cycle. Never spawn a fresh implementer or reviewer per cycle — accumulated context is the point.
 
@@ -30,7 +32,7 @@ You are the orchestrator, not the implementer.
 **A model never reviews its own work — reviewer and implementer are different model families.**
 
 - Codex implements → a claude reviewer pane reviews, and vice versa.
-- pi models (DeepSeek, GLM, Grok) are three further distinct families: a pi implementer is reviewed by claude, codex, or a *different* pi model; a pi reviewer may review claude or codex work. `deepseek-v4-flash` is the budget reviewer of choice (operator-verified: noticeably more thorough review checks than its benchmark tier suggests).
+- pi models (DeepSeek, GLM, Grok) are three further distinct families: a pi implementer is reviewed by claude, codex, or a *different pi family*; a pi reviewer may review claude or codex work. DeepSeek Pro and Flash are the same family and must never review each other. `deepseek-v4-flash` is the budget reviewer of choice; reserve `grok-4.6` for cases where its stronger review is worth the scarce weekly pool.
 
 The reviewer runs in the same yolo mode as the implementer — no sandbox. The don't-touch-the-code discipline is contractual, not enforced: the reviewer prompt forbids edits, commits, and pushes, and the oid-pinned merge gate catches any unreviewed change regardless of who made it. Claude-side fan-out stays in-family automatically (Claude Code subagents inherit their parent's model).
 
@@ -40,7 +42,7 @@ The reviewer runs in the same yolo mode as the implementer — no sandbox. The d
 2. Identify your own pane — never via `"focused":true`, which another client can own. Resolve the id into a variable first, then rename: `pane="${HERDR_PANE_ID:-$(herdr pane current | jq -r .result.pane.pane_id)}"; herdr agent rename "$pane" "orch"` (adjust the jq path to the actual output on first use). Self-address by the `orch` label afterwards; pane ids compact when panes close. Agent names must match `^[a-z][a-z0-9_-]{0,31}$` — lowercase only.
 3. Confirm `gh auth status` works (you merge; agents post PR comments).
 4. Confirm the quota gate: `codexbar usage --json --provider opencodego` returns usage (fast local probe). If codexbar is missing, fall back to `cclimits --json --claude --codex` — it covers claude/codex only, so pi-side quotas (opencode-go, z.ai, grok) run unmeasured (see quota section).
-5. Confirm the agent CLIs you will dispatch: `claude --version`, `codex --version`, `pi --version`. Verified against claude 2.1.220, codex-cli 0.146.1, pi 0.84.0, codexbar 0.47.0, herdr 0.8.0 — if versions differ significantly, re-check flags with `--help` before relying on them.
+5. Confirm the agent CLIs you will dispatch: `claude --version`, `codex --version`, `pi --version`. Verified against claude 2.1.228, codex-cli 0.147.0, pi 0.84.1, codexbar 0.49.4, herdr 0.8.0 — if versions differ significantly, re-check flags with `--help` before relying on them.
 6. Spot-check the global skill set agents depend on: `ls ~/.agents/skills` should include `implement`, `code-review`, `diagnosing-bugs`, `tdd`, `codebase-design` (the Matt Pocock set) plus `deep-code-review`. If missing, tell the operator before dispatching.
 7. **Stale-worktree sweep.** `herdr worktree list --cwd <repo-root> --json`; for any worktree whose PR is **merged** (`gh pr list --head <branch> --state all`), tear it down now (worktree remove + branch delete). Closed-but-unmerged PRs may be intentionally retained — surface those to the operator instead of deleting. Repeat this sweep before ending the session — never leave stale worktrees behind.
 
@@ -65,25 +67,24 @@ Route by problem character, not just size. Benchmark data (DeepSWE v1.1) and ope
 | Surgical/precision changes in delicate code | codex `gpt-5.6-sol` @ `high`–`xhigh` | claude `opus` @ `xhigh` |
 | Hard but well-understood (large refactors) | claude `opus` @ `xhigh` or codex `sol` @ `xhigh` | opposite family @ `xhigh`+ |
 | Hard and poorly understood — deep analysis, gnarly debugging | claude `fable` @ `xhigh` | codex `sol` @ `max` |
-| Bulk well-specified work, or claude/codex quota is tight | pi `deepseek-v4-flash` @ `max` (alts: `grok-4.5` @ `high` when wall-clock matters, `glm-5.2` @ `max` as overflow) | any other family — claude/codex when they have headroom, else a different pi model |
+| Bulk well-specified work, or claude/codex quota is tight | pi `deepseek-v4-flash` @ `max` by default; use `deepseek-v4-pro` @ `max` only when its possible quality gain is worth the smaller allowance; reserve `grok-4.6` (vendor-default `high`) for work where speed/quality matters enough to spend its weekly pool | any other family — never DeepSeek reviewing DeepSeek |
 
 Qualitative traits the benchmark doesn't show (operator-verified):
 
 - **fable** is the smartest model — materially better than opus on genuinely hard problems despite benchmark parity. Reserve it for the hardest tier; don't "optimize" it away by re-reading leaderboards.
 - **opus** is a very good default for most claude-side work. Rare edge cases (scope creep, test bloat, occasional refusal) are handled by the universal YAGNI prompt line and the reviewer gate — no special guardrails.
 - **sol** is focused and meticulous: best for surgical changes and the most reliable reviewer.
-- **luna** at `max` is the cheap codex-side workhorse for well-specified tasks (best pass@4 on DeepSWE, ~$1–3/task after the 2026-07 price cut).
-- The three **pi models** perform similarly to each other in operator tests (all ~53% pass@1 class @ their pinned efforts; glm trails on pass@1 but matches on pass@4). Differentiators: **deepseek-v4-flash** draws the least allowance by far and reviews most thoroughly — the default; **grok-4.5** is ~3× faster wall-clock (8 vs 24 min/task mean) but draws pricier allowance; **glm-5.2** is the overflow when the other two subs are gated.
-- Re-checked 2026-08 against DeepSWE v1.1 — the claude/codex picks above all still hold. Two near-misses, recorded so they aren't re-litigated: `gpt-5.6-terra` @ `max` (69.6%) is dominated (sol `xhigh` is better at the same cost, luna `max` cheaper at similar quality); `opus` @ `medium` (68.9%, ~half the cost of `high`) is the claude-side value fallback when the 5h window is tight.
+- **luna** at `max` is the cheap codex-side workhorse for well-specified tasks.
+- **deepseek-v4-flash** at `max` is the default pi implementer and reviewer: Pro's higher benchmark point estimate is not statistically separated, while Flash has far more OpenCode Go allowance. Use **deepseek-v4-pro** only when retry tolerance or operator experience favors it.
+- **grok-4.6** is a fast, strong pi option, but its shared weekly pool burns quickly. Spend it selectively and route routine work to Flash. The **z.ai lane remains parked** until GLM-5.3 stops rate-limiting in operator tests.
+- Re-run the `coding-benchmarks` skill when revisiting model choices; do not preserve leaderboard ledgers here.
 
 Hard rules (benchmark cliffs):
 
 - **luna: `max` only.** It collapses below that (`high` 44%, `medium` 11%, `low` 2% pass@1). Never dispatch luna below `max`.
 - **fable: `xhigh`, never `max`** (`max` adds nothing over `xhigh` at +61% cost).
 - **sol: never `low`;** its sweet spot is `high`, escalate to `xhigh`/`max` for hard work.
-- **pi models are workhorse-tier only** (~53% pass@1 class vs 67–73% for luna/sol/opus): easy/well-specified implementation and reviews — never hard-tier or surgical work.
-- **pi efforts are pinned: deepseek and glm at `max` thinking only** (glm collapses at `high`: 36% vs 44%; max is deepseek's benchmarked config), **grok at `high`** — `high` *is* its catalog ceiling (no `xhigh`/`max`).
-- Efforts map 1:1 to CLI flags: claude `--effort <low|medium|high|xhigh|max>`, codex `-c model_reasoning_effort="<low|medium|high|xhigh|max>"`, pi `--model <provider>/<model>:<level>` suffix (or `--thinking <level>`).
+- **DeepSeek: `max` only.** **Grok: vendor-default `high`.** Pi 0.84.1 cannot transmit Grok effort, so its `:high` suffix is documentary and `:xhigh` would not escalate it. See [references/agent-clis.md](references/agent-clis.md) for launch details.
 
 Before assigning a model, check its quota window; if it lacks headroom, use another family (keeping the pairing cross-family) or wait (see quota section).
 
@@ -118,6 +119,10 @@ Before creating anything, **check for existing state** (idempotency/resume): `gh
    - Open/`MERGEABLE`/`CLEAN` (or `HAS_HOOKS`) → `gh pr merge <N> --squash --match-head-commit <review-oid>` (no `--delete-branch`; the branch is checked out in the worktree). The `--match-head-commit` pin makes a push between gate and merge fail safely instead of merging unreviewed code.
 10. **Teardown.** Exit both agents (`/exit` for claude, `/quit` for codex and pi), wait for their panes to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout, closes the workspace and both panes) and delete the branch.
 
+### Active supervision
+
+Use bounded waits (normally five minutes while an agent is actively coding or reviewing), then inspect once: `herdr agent read <target> --source recent --lines 60`. Compare the work with the issue, acceptance criteria, and current lifecycle state. If the agent is drifting, send a concise correction; if it is continuing clearly wrong, destructive, or out-of-scope work, interrupt with `herdr agent send-keys <target> C-c`, then steer it. If progress is sound, return to a blocking wait. Supervision means timely intervention, not continuous pane polling.
+
 ## Universal implementer principle
 
 Every implementer spawn prompt carries one shared line — and only one; modern models don't need detailed guidance:
@@ -134,14 +139,14 @@ Run at most **2 issues concurrently** (up to 4 agent panes: one implementer + on
 
 ## Quota headroom (all subscriptions are shared — always leave headroom)
 
-The operator uses all five subscriptions elsewhere; this orchestrator must never drain any of them. Providers and their binding windows: **codex** — weekly only (no 5h); **claude** — 5h (weekly as secondary watch); **opencode-go** (deepseek) — 5h, plus weekly/monthly; **z.ai** (glm) — 5h tokens window; **grok** (Supergrok) — weekly.
+The operator uses these subscriptions elsewhere; leave headroom. Active routes are **codex** (weekly), **claude** (5h plus weekly), **opencode-go** (5h, weekly, monthly), and **grok** (one shared weekly pool). The parked z.ai details live in [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md).
 
 The gate is by window length, uniform across providers:
 
 - Windows **≤ 5h**: stop dispatching that family when remaining ≤ **20%** — unless the reset is imminent (≤ ~30 min). For claude this also means keeping your own turns short.
 - **Weekly/monthly** windows: stop when remaining ≤ **15%** — unless the reset is imminent (≤ ~12 h), in which case finishing in-flight work is fine.
 
-Gate each provider on **whatever windows codexbar actually reports**; if a longer window becomes the binding constraint for a short-window provider, surface that to the operator.
+Gate each provider on **whatever windows codexbar actually reports**. CodexBar's Grok result may omit `windowMinutes`; classify that pool as weekly. Also conserve a family when its burn pace would exhaust the window before reset, even if it has not crossed the fixed floor.
 
 Mechanics:
 
@@ -152,10 +157,10 @@ Mechanics:
 
 ## Anti-polling discipline
 
-Never loop `agent list`/`pane read` to watch progress. Use blocking waits and self-scheduling:
+Never busy-poll `agent list`/`pane read`. Use bounded blocking waits for active supervision and self-scheduling for long quota waits:
 
 - Prompt-and-wait in one call: `herdr agent prompt <target> "<text>" --wait --timeout <ms>` — omit `--until` so the default matches any settled state (`idle`, `done`, or `blocked`), then classify with `herdr agent get`.
-- Wait on an already-working agent: `herdr agent wait <target> --timeout <ms>` (same default matching). `blocked` means it needs help; read the pane and escalate rather than re-waiting.
+- Wait on an already-working agent with a bounded timeout: `herdr agent wait <target> --timeout <ms>`. On timeout or `blocked`, inspect once and steer as needed; otherwise resume the wait.
 - Long time-based waits (quota reset): detached self-wake, then end the turn.
 
 ## Naming for mobile (Moshi)
@@ -179,6 +184,7 @@ Each turn, report only operational state (redact secrets — account ids, tokens
 
 - issues in flight: workspace, worktree, implementer model+effort, reviewer type, PR number;
 - what you dispatched or waited on this turn;
+- any steering or interruption and why;
 - verdict + unresolved items + fix-cycle count per PR;
 - merges done or skipped, with mergeability evidence;
 - quota state when it gated a decision (provider, window, % used, reset countdown), plus any self-wake armed;

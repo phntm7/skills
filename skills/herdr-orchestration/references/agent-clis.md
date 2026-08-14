@@ -1,6 +1,6 @@
 # claude + codex + pi CLI reference
 
-Verified against **claude 2.1.220**, **codex-cli 0.146.1**, and **pi 0.84.0** (flags checked live; the codex model/effort combination `gpt-5.6-luna` + `max` verified end-to-end). If versions differ, confirm with `--help`.
+Verified against **claude 2.1.228**, **codex-cli 0.147.0**, and **pi 0.84.1** (flags checked live; the codex model/effort combination `gpt-5.6-luna` + `max` verified end-to-end). If versions differ, confirm with `--help`.
 
 Both implementer and reviewer agents run as **interactive panes** (via `herdr agent start`) in **yolo mode** — no sandboxes, no approval prompts. Sandboxes caused constant breakage (blocked writes, blocked `gh`, stalled approvals); the operator's accepted tradeoff is: the worktree is not a security boundary — the protections are the reviewer gate, the oid-pinned merge gate, and secret discipline in the spawn prompts. Re-review is simply another `herdr agent prompt` to the same pane: no session-id capture, no resume machinery.
 
@@ -48,14 +48,15 @@ codex -m <gpt-5.6-sol|gpt-5.6-luna> -c model_reasoning_effort="<effort>" \
 ### Interactive launch (inside a herdr pane, via `agent start --kind pi`)
 
 ```bash
-pi --model opencode-go/deepseek-v4-flash:max -a    # primary workhorse
-pi --model xai/grok-4.5:high -a                    # ~3× faster wall-clock, pricier allowance
-pi --model zai/glm-5.2:max -a                      # overflow when the other two subs are gated
+pi --model opencode-go/deepseek-v4-flash:max -a    # default bulk implementer / reviewer
+pi --model opencode-go/deepseek-v4-pro:max -a      # reserve: smaller Go allowance, possible quality gain
+pi --model xai/grok-4.6:high -a                    # scarce weekly pool; :high documents the vendor default
+# z.ai lane parked — Coding Plan auto-routes GLM-5.2/5.1 to GLM-5.3 (429s as of 2026-08); do not dispatch zai/… until stable
 ```
 
-- **Only these three model/effort combos are approved** — the thinking level is pinned in the `:<level>` suffix (equivalently `--thinking <level>`). Catalog ceilings (verified in pi's models store): deepseek-v4-flash `high|max`; glm-5.2 up to `max`; grok-4.5 tops out at `high` — there is no grok `xhigh`/`max`.
+- **Only these combos are approved.** DeepSeek supports `high|max`; use `max`. Grok supports `low|medium|high|xhigh`, but pi 0.84.1 cannot transmit its effort, so `:high` is documentary and the request uses xAI's current default `high`; `:xhigh` would not escalate it. **z.ai remains parked**: its Coding Plan routes GLM-5.2/5.1 to GLM-5.3, which rate-limited operator tests within minutes. Re-add it only after a clean retest.
 - pi has **no approval or sandbox system at all** — every tool call (read, bash, edit, write) runs unprompted; it is inherently yolo. The only startup gate is project-local file trust: pass `-a` (`--approve`) so a fresh worktree pane never stalls on the trust dialog.
-- Provider ↔ subscription ↔ codexbar mapping: `opencode-go/…` → OpenCode Go sub → `codexbar --provider opencodego`; `zai/…` → z.ai sub → `--provider zai`; `xai/…` → Supergrok sub → `--provider grok`.
+- Provider ↔ subscription ↔ codexbar mapping: `opencode-go/…` → OpenCode Go sub → `codexbar --provider opencodego`; `zai/…` → z.ai sub → `--provider zai`; `xai/…` → Supergrok shared weekly pool → `--provider grok`.
 - No subagent fan-out; pi implementers work single-agent, like codex.
 - Exit for teardown: `/quit` (pi has no `/exit`).
 - Headless fallback (scripting only, never reviews): `pi -p "<prompt>"`; `pi -c "<follow-up>"` continues the previous session.
@@ -66,7 +67,7 @@ pi --model zai/glm-5.2:max -a                      # overflow when the other two
 codexbar usage --json --provider <codex|claude|opencodego|zai|grok>
 ```
 
-One provider per call. Measured latencies (codexbar 0.47.0): opencodego ~0.3 s (local), grok ~1 s, zai ~2 s, **claude ~17 s** (claude.ai API), **codex ~20 s** (OpenAI web dashboard). Check the two slow ones as parallel background jobs:
+One provider per call. Measured latencies (codexbar 0.49.4): opencodego ~0.3 s (local), grok ~1 s, zai ~2 s, **claude ~17 s** (claude.ai API), **codex ~20 s** (OpenAI web dashboard). Check the two slow ones as parallel background jobs:
 
 ```bash
 codexbar usage --json --provider claude >"$TMP/claude.json" &
@@ -91,7 +92,7 @@ wait
 // unmeasurable provider: {"provider": "…", "error": {"kind": "provider", "message": "…"}}
 ```
 
-- Remaining % = `100 − usedPercent`. Gate by `windowMinutes`, not by key name: `≤ 300` → the 20% short-window gate, larger → the 15% weekly/monthly gate (details in [lifecycle-and-quota.md](lifecycle-and-quota.md)). Never assume which of primary/secondary/tertiary a provider populates.
+- Remaining % = `100 − usedPercent`. Normally classify by `windowMinutes`: `≤ 300` → the 20% short-window gate, larger → the 15% weekly/monthly gate. Grok's primary window may omit `windowMinutes`; treat it as weekly. See [lifecycle-and-quota.md](lifecycle-and-quota.md).
 - `resetsAt` is ISO-8601 — compute self-wake seconds directly from it; no humanized-string parsing.
 - The JSON carries account emails/ids — never echo it raw into reports; extract windows only.
 - A provider whose element has `error` can't be measured: proceed, tell the operator its quota is unmeasured, and let runtime quota errors be the stop signal.
