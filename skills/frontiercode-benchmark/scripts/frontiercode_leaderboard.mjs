@@ -138,7 +138,7 @@ function allRows(rev) {
 
 const pct = (x) => (x == null ? "" : (x * 100).toFixed(1));
 const usd = (x) => (x == null ? "" : x.toFixed(2));
-const kt = (x) => (x == null ? "" : (x / 1000).toFixed(0) + "k");
+const kt = (x) => (x == null ? "" : x >= 1000 ? (x / 1000).toFixed(x >= 100_000 ? 0 : 1) + "k" : String(Math.round(x)));
 const effortLabel = (e) => (e == null || e === "none" ? "-" : e);
 
 function compactRow(rev, model, effort, row) {
@@ -161,9 +161,9 @@ function markdown(rev, meta) {
     .sort((a, b) => b.val - a.val || (a.row.cost ?? 0) - (b.row.cost ?? 0));
 
   let md = `# FrontierCode ${VERSION} leaderboard — ${SUBSET} subset (${rev.subsets[SUBSET] ?? "?"} tasks)\n\n`;
-  md += `${meta} Ranked by best ${METRIC} per model${
-    ALL ? " (every model × effort row)" : ""
-  }. Pass% = trials passing all blocker rubric criteria; Score% = weighted rubric aggregate (blockers → 0); Flagged% = runs zeroed for unfair internet use (v1_1). $/rollout and tokens are means per rollout.\n\n`;
+  const flaggedNote = VERSION === "v1_1" ? "Flagged% = runs zeroed for unfair internet use. " : "";
+  md += `${meta} Ranked by best ${METRIC} per model${ALL ? " (every model × effort row)" : ""}. `;
+  md += `Pass% = trials passing all blocker rubric criteria; Score% = weighted rubric aggregate (blockers → 0). ${flaggedNote}$/rollout and tokens are means per rollout.\n\n`;
   md += `| # | Model | Harness | Effort | Pass% | Score% | $/rollout | Tokens | Flagged% |\n`;
   md += `|--:|---|---|--:|--:|--:|--:|--:|--:|\n`;
   md += rows

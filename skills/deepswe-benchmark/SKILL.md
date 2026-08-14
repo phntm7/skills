@@ -7,8 +7,10 @@ description: >
   (Claude Opus/Fable/Sonnet, GPT-5.x, Gemini, Kimi, GLM, Grok, ...) and
   reasoning-effort levels. Use when deciding which model or reasoning effort to
   use for a coding task, comparing model quality vs cost, checking latest
-  agentic coding benchmark scores, or when the user mentions DeepSWE. Data is
-  cached locally for 24h and auto-refreshed.
+  agentic coding benchmark scores, or when the user mentions DeepSWE. For
+  mergeability/harness-specific questions (Cognition's FrontierCode), also
+  load frontiercode-benchmark — the two boards are not interchangeable. Data
+  is cached locally for 24h and auto-refreshed.
 ---
 
 # DeepSWE Benchmark
