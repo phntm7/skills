@@ -1,18 +1,16 @@
 ---
 name: coding-benchmarks
 description: >
-  Fetch current agentic coding-benchmark leaderboards to compare coding-agent
-  performance of LLMs — DeepSWE v1.1 (deepswe.datacurve.ai: pass@1/pass@4,
-  cost, output tokens, agent steps, duration, peak context under
-  mini-swe-agent) and FrontierCode 1.1 (cognition.com/frontiercode:
-  mergeability pass rate, rubric score, cost, tokens, agent harness) — across
+  Fetch current agentic coding-benchmark leaderboards — DeepSWE v1.1
+  (deepswe.datacurve.ai: pass@1/pass@4, cost, output tokens, agent steps,
+  duration, peak context under mini-swe-agent) and FrontierCode 1.1
+  (cognition.com/frontiercode: mergeability pass rate, rubric score, cost,
+  tokens, agent harness) — to compare coding-agent performance of LLMs across
   models (Claude Fable/Opus/Sonnet, GPT-5.x, Grok, Gemini, Kimi, GLM,
   DeepSeek, Mistral, SWE-*, ...) and reasoning-effort levels. Use when the
   user mentions DeepSWE, FrontierCode, mergeability, Cognition's benchmark,
-  harness-specific SWE scores, wants to decide which model or reasoning
-  effort to use for a coding task, compare model quality vs cost, or check
-  latest agentic coding benchmark scores. Data is cached locally for 24h and
-  auto-refreshed.
+  harness-specific SWE scores, or wants to decide which model or reasoning
+  effort to use for a coding task.
 ---
 
 # Coding Benchmarks
@@ -22,14 +20,12 @@ coding benchmarks that measure different things:
 
 - **DeepSWE v1.1** — pass@1/pass@4 under a single harness (mini-swe-agent),
   113 tasks, plus cost, steps, duration, and context usage. Site:
-  deepswe.datacurve.ai. v1 is frozen and outdated — never use it.
+  deepswe.datacurve.ai.
 - **FrontierCode 1.1** — **mergeability**: would the maintainer actually merge
   this PR? Tasks authored by the repos' own open-source maintainers, graded
   end-to-end (correctness, test quality, scope discipline, style) with unit
-  tests, rubrics, and verifiers; 5 trials per effort averaged; runs caught
-  consulting solution-bearing sources are zeroed. Main = the 100 hardest
-  tasks; Extended adds 50 easier ones. Site: cognition.com/frontiercode.
-  1.0 is archived — never use it.
+  tests, rubrics, and verifiers, under each model's own agent harness. Site:
+  cognition.com/frontiercode.
 
 The boards are **not interchangeable**: DeepSWE measures pass rate under one
 harness; FrontierCode measures mergeable quality under each model's own
@@ -38,7 +34,8 @@ different job.
 
 ## Usage
 
-Two commands, one per board, same flags:
+Two commands, one per board — both accept `--json`, `--fresh`, and
+`--version`; FrontierCode adds `--subset`, `--metric`, `--all`:
 
 ```bash
 node <skill-dir>/scripts/deepswe_leaderboard.mjs
@@ -49,6 +46,17 @@ node <skill-dir>/scripts/frontiercode_leaderboard.mjs
   across boards.
 - User names a board (DeepSWE, FrontierCode, mergeability, pass@k, ...) — run
   only that one.
+
+### Combining both boards
+
+A generic model-choice answer is not complete until both tables are in hand
+(if one fetch fails, say so):
+
+- Both boards agree on the same model × effort → that is the recommendation.
+- They disagree → do **not** average the boards. Pick by the question's
+  shape: mergeability / harness / production quality → FrontierCode wins;
+  pass@k / retry tolerance / single-harness cost → DeepSWE wins. State the
+  other board's top pick as a cross-check.
 
 Flags (both scripts):
 
@@ -111,7 +119,6 @@ whether data was cached or fetched.
   batch/autonomous use.
 - Board-specific caveats: on FrontierCode, use `main` (the 100 hardest tasks,
   Cognition's headline board) for close calls — `extended` adds 50 easier
-  tasks that inflate scores (e.g. Opus 5: 58.9% main vs 69.6% extended); on
-  DeepSWE, treat CI-overlapping rows as tied.
+  tasks and inflates scores; on DeepSWE, treat CI-overlapping rows as tied.
 - These are agentic coding scores under specific harnesses; do not present
   them as evidence for non-coding abilities (writing, vision, etc.).
