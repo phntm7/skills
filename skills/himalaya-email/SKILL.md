@@ -1,13 +1,8 @@
 ---
 name: himalaya-email
 description: >
-  Use the himalaya email CLI (v2) to read, search, send, and manage email from the
-  terminal across IMAP, SMTP, JMAP, Gmail, and Microsoft Graph backends. Use when
-  listing/reading/searching messages, sending or composing mail, managing flags,
-  mailboxes (folders), or attachments, switching accounts, scripting email with JSON
-  output, or diagnosing himalaya auth/backend errors such as the Microsoft 365
-  "User is authenticated but not connected" failure. Covers the v2 command surface and
-  OAuth-token-via-command auth. Not for installing or configuring himalaya (setup is separate).
+  Use when reading, searching, sending, or managing email with Himalaya v2,
+  including account or backend failures; it provides safe CLI workflows for mail and auth.
 ---
 
 # Himalaya Email (CLI usage)

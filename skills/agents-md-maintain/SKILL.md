@@ -1,10 +1,8 @@
 ---
 name: agents-md-maintain
 description: >
-  Maintain, update, audit, refactor, clean up, merge, or synchronize AGENTS.md
-  and CLAUDE.md project instruction files. Use when a user asks to add a rule,
-  remove stale guidance, improve project memory, review agent instructions,
-  manage CLAUDE.md, manage AGENTS.md, or keep both files in sync.
+  Use when auditing, updating, merging, or synchronizing existing AGENTS.md and
+  CLAUDE.md files; it removes stale guidance and keeps instructions consistent.
 ---
 
 # AGENTS.md Maintain

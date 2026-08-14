@@ -1,15 +1,8 @@
 ---
 name: omniroute-ops
 description: >
-  Understand, call, and troubleshoot OmniRoute — a local-first OpenAI-compatible AI
-  gateway that routes one endpoint to 226+ providers with auto-fallback, combos,
-  compression, quota tracking, MCP/A2A servers, and resilience. Use when a user asks
-  what OmniRoute can do or how its API works; to call its OpenAI/Anthropic/Gemini/Ollama
-  compatible routes (chat completions, models, embeddings, images, audio, rerank, search,
-  files, batches); to pick or build routing combos (`auto`, priority, cost-optimized);
-  to read providers, usage, quota/limits, or rate-limit state; or to diagnose 401/403
-  AUTH_001, 429, 5xx, or opencode-go/Cloudflare failures. Not for choosing an LLM with no
-  OmniRoute or provider-routing context.
+  Use when calling or troubleshooting OmniRoute APIs, authentication, quotas, or
+  provider-routing combos; it provides safe workflows for discovery, requests, and failure diagnosis.
 ---
 
 # OmniRoute Ops

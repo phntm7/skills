@@ -1,10 +1,8 @@
 ---
 name: agents-md-init
 description: >
-  Initialize AGENTS.md and CLAUDE.md project instruction files. Use when a user
-  asks to create, bootstrap, generate, scaffold, initialize, or set up
-  AGENTS.md, CLAUDE.md, agent instructions, project memory, repository guidance,
-  or coding-agent context files for a project.
+  Use when creating AGENTS.md or CLAUDE.md project instructions; it inspects the
+  repository and produces concise, project-specific guidance.
 ---
 
 # AGENTS.md Init

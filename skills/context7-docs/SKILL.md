@@ -1,14 +1,8 @@
 ---
 name: context7-docs
 description: >
-  Fetch current, version-specific library and framework documentation with the
-  Context7 CLI (ctx7): resolve a package name to a library ID, then query docs
-  and code examples for it. Use when working with an external library, SDK,
-  framework, or API and needing up-to-date usage docs — method signatures,
-  configuration, migration notes, idiomatic examples — instead of guessing
-  from memory; triggers include "look up the docs", "how do I do X in this
-  library", "check the current API", "context7", "ctx7". CLI only: this
-  skill never sets up or uses the Context7 MCP server.
+  Use when work depends on current, version-specific documentation for a library,
+  SDK, framework, or API; it retrieves relevant docs and examples with the Context7 CLI.
 ---
 
 # Context7 Docs Lookup

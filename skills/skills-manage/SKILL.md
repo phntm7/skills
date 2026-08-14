@@ -1,15 +1,9 @@
 ---
 name: skills-manage
 description: >
-  Manage Agent Skills with the `skills` CLI: list, find, add, install, remove,
-  uninstall, update, upgrade, sync, scaffold, and run SKILL.md skills across
-  Claude Code, Codex, Cursor, OpenCode, Cline, and 70+ other agents. Use when
-  the user asks to add or remove a skill, browse installed skills, search for
-  skills, upgrade skills, run or preview a skill without installing it, switch
-  between global and project scope, target specific agents with `-a`, install
-  from a GitHub repo or local path, scaffold a new skill with `skills init`, or
-  restore from `skills-lock.json`. Call the CLI as `skills`, not `npx skills`;
-  the binary is expected to be installed locally.
+  Use when discovering, installing, removing, updating, running, or scaffolding
+  Agent Skills with the `skills` CLI; it applies correct scope, agent targeting,
+  telemetry, and lockfile workflows.
 ---
 
 # Skills Manage

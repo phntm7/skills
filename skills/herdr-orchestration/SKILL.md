@@ -1,17 +1,8 @@
 ---
 name: herdr-orchestration
 description: >
-  Orchestrate issue implementation by spawning Claude Code, Codex CLI, and pi
-  implementer agents in herdr worktree workspaces, one workspace per issue,
-  driving a cross-family PR review loop to approval and a gated squash
-  merge. Use when acting as a herdr orchestrator that never writes code itself:
-  give it a folder of issue files, GitHub issues, or a chat list of tasks and
-  it creates herdr worktree workspaces, launches claude/codex/pi implementers
-  (opus, fable, gpt-5.6-sol, gpt-5.6-luna, deepseek-v4-flash,
-  deepseek-v4-pro, grok-4.6), reviews via cross-family reviewer
-  agents in side-by-side panes, loops fix and re-review until LGTM, respects
-  subscription-limit headroom via codexbar (cclimits fallback), then merges
-  and cleans up.
+  Use when orchestrating multiple issues through Herdr with Claude Code, Codex,
+  or Pi agents; it manages worktrees, cross-family review loops, gated merges, and cleanup.
 ---
 
 # Herdr Orchestration

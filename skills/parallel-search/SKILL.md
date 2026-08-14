@@ -1,17 +1,9 @@
 ---
 name: parallel-search
 description: >
-  Search the web, extract page content, and run deep research with the
-  Parallel CLI (`parallel-cli`). Use when a task needs real-time web search
-  with LLM-optimized excerpts, batch URL extraction to markdown (including
-  JS-heavy pages and PDFs), deep research reports at a chosen cost/latency
-  tier, entity discovery (FindAll), CSV/JSON data enrichment, or continuous
-  web monitoring. Triggers: "search the web", "look up online", "fetch/extract
-  this page", "research X in depth", "find all companies that...", "enrich
-  this list", "monitor the web for...", "parallel-cli", "Parallel API". If
-  more than one of the linkup/parallel-cli/tvly CLIs is installed, consult
-  the web-search-router skill first to pick the engine. Not for browser
-  automation or authenticated pages (use a browser tool instead).
+  Use when Parallel is requested or selected for excerpt-rich search, page or
+  PDF extraction, entity discovery, enrichment, monitoring, or deep research;
+  it provides cost-aware CLI workflows.
 ---
 
 # Parallel CLI

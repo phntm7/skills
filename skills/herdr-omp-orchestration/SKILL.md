@@ -1,14 +1,8 @@
 ---
 name: herdr-omp-orchestration
 description: >
-  Orchestrate issue implementation by spawning omp (Oh My Pi) implementer and
-  reviewer agents in herdr panes, one tab per issue, driving a PR review loop
-  to approval and a gated squash merge. Use when acting as a herdr+omp
-  orchestrator that never writes code itself: give it a folder of issue files,
-  GitHub issues, or a chat list of tasks and it creates git worktrees, launches
-  paired agents (implementer plus an opposite-model reviewer), loops fix and
-  re-review until LGTM, respects subscription-limit headroom, then merges and
-  cleans up worktrees, panes, and tabs.
+  Use when orchestrating issue implementation through Herdr with OMP implementer
+  and reviewer agents; it manages worktrees, review loops, gated merges, and cleanup.
 ---
 
 # Herdr OMP Orchestration

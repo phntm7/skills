@@ -1,15 +1,8 @@
 ---
 name: coding-benchmarks
 description: >
-  Fetch and compare current agentic coding-benchmark leaderboards — DeepSWE v1.1
-  (deepswe.datacurve.ai: pass@1/pass@4, cost, output tokens, agent steps,
-  duration, peak context under mini-swe-agent) and FrontierCode 1.1
-  (cognition.com/frontiercode: mergeability pass rate, rubric score, cost,
-  tokens, agent harness) — with bounded model filters, reasoning-effort rows,
-  canonical cross-board IDs, and JSON output for agents. Use when the user
-  mentions DeepSWE, FrontierCode, mergeability, Cognition's benchmark,
-  harness-specific SWE scores, or wants to decide which model or reasoning
-  effort to use for a coding task.
+  Use when comparing current DeepSWE or FrontierCode results or choosing a model
+  and reasoning effort for coding; it provides normalized data and decision guidance.
 ---
 
 # Coding Benchmarks

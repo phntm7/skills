@@ -1,16 +1,9 @@
 ---
 name: playwriter
 description: >
-  Automate the user's real Chrome browser with the playwriter CLI: run
-  Playwright code snippets in a stateful sandbox to test web apps in a
-  browser, access and research websites, scrape JS-heavy pages (SPAs, login
-  walls, infinite scroll), take screenshots, intercept network requests, and
-  debug frontend issues. Use when the user mentions playwriter, asks to open
-  or test something in the browser, check a page in Chrome, or when
-  webfetch/curl returns an empty JS shell. Connects to the user's running
-  Chrome via extension, so existing logins, cookies, and extensions are
-  available. Always uses isolated sessions so several agents can share the
-  browser safely.
+  Use when a task needs automation in the user's logged-in Chrome for UI testing,
+  JS-heavy scraping, screenshots, or frontend debugging; it provides isolated,
+  stateful Playwright workflows.
 ---
 
 # Playwriter

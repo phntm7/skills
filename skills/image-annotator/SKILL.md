@@ -1,13 +1,8 @@
 ---
 name: image-annotator
 description: >
-  Annotate and diff existing PNG, JPEG, WebP, AVIF, or TIFF images with
-  automatic callouts, arrows, labels, numbered legends, highlights, blur,
-  pixelation, redaction, spotlights, zoom insets, clean or sketchy marks, and
-  change heatmaps. Use when a user asks to mark up a screenshot or image, call
-  out UI elements, compare two image files, hide sensitive regions, or create
-  an annotated image artifact. Not for capturing screenshots, editing PDFs, or
-  animated GIFs.
+  Use when marking up or comparing existing raster images with callouts,
+  highlights, redactions, zooms, or diff heatmaps; it produces polished image artifacts.
 ---
 
 # Image Annotator

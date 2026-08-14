@@ -1,13 +1,8 @@
 ---
 name: workflow-audit
 description: >
-  Audit recent coding-agent history (Codex, Claude Code, OpenCode, Factory
-  Droid, Pi) to find repeated manual workflows worth packaging as skills,
-  subagents, commands, automations, or memory/instruction updates. Use when
-  the user asks to audit agent workflows, scan agent sessions, find recurring
-  patterns, identify automation or skill opportunities, decide what should
-  become a skill or command, review what to extract from past chats, or
-  check for repeated workflows across Codex/Claude Code that could be reused.
+  Use when analyzing recent coding-agent histories for repeated manual work; it
+  identifies strong candidates for skills, subagents, commands, automations, or instruction updates.
 ---
 
 # Workflow Audit

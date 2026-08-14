@@ -1,7 +1,8 @@
 ---
 name: omp-ops
 description: >
-  Operate the Oh My Pi (omp) CLI. Use when users need to configure omp settings/config path, add/inspect/troubleshoot model providers and API keys/.env, inspect model catalogs, run omp non-interactively from another agent or script (one-shot or resumable session, e.g. as a reviewer or other delegated task), or resume/continue sessions (-p, --mode json, --continue, --resume).
+  Use when configuring providers or models or running and resuming non-interactive
+  sessions with the Oh My Pi (`omp`) CLI; it provides reliable command and auth workflows.
 ---
 
 # OMP Ops

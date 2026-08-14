@@ -1,10 +1,8 @@
 ---
 name: surge-cli
 description: >
-  Publish and manage static websites with the Surge CLI (`surge`). Use when
-  asked to deploy a mockup, prototype, sketch, plan, or static build to Surge;
-  share or update an existing Surge URL; create a preview revision; inspect,
-  roll back, or remove a Surge project; or manage a Surge domain.
+  Use when publishing or managing a static site with Surge, including previews,
+  domains, revisions, rollback, or removal; it provides safe CLI deployment workflows.
 ---
 
 # Surge CLI

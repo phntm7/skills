@@ -1,13 +1,8 @@
 ---
 name: craft-mcp
 description: >
-  Operate the Craft (craftdocs) note app through its MCP tools (craft_read and craft_write)
-  to read, search, create, and edit Craft documents, pages, blocks, daily notes, tasks, and
-  collections/tables. Use when adding or updating a note/page/block in Craft, reading or
-  searching Craft docs, working with daily notes or tasks, building collections, resolving
-  craftdocs:// links, or when Craft markdown escaping, code blocks, or internal links behave
-  unexpectedly. Covers the command surface and the escaping/linking gotchas that cause silent
-  content corruption.
+  Use when reading, searching, creating, or editing Craft documents, tasks, daily
+  notes, or collections through MCP; it applies safe escaping and linking conventions.
 ---
 
 # Craft MCP (usage)

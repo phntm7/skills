@@ -1,15 +1,8 @@
 ---
 name: mise-manage
 description: >
-  Manage mise-en-place (mise) dev tools, runtimes, and CLIs globally and per
-  project: mise.toml and ~/.config/mise/config.toml, config precedence, mise
-  use/install/exec/run/up/upgrade/latest/ls/outdated, backends (core, aqua,
-  github, npm, pipx, cargo, go, ubi, asdf, vfox, http), lockfiles (mise.lock),
-  env vars and secrets, tasks, shims vs activate, config trust, the registry,
-  and supply-chain controls (minimum_release_age, prereleases, verification).
-  Use when the user mentions mise, asks to install or pin or upgrade a tool,
-  add a tool to a project or global config, debug a mise warning or failed
-  resolution, choose a backend, set up lockfiles, or manage mise env/tasks.
+  Use when installing, pinning, upgrading, or troubleshooting tools and runtimes
+  managed by mise; it covers configuration, backends, lockfiles, environments, and supply-chain controls.
 ---
 
 # Mise Manage

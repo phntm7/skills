@@ -1,12 +1,8 @@
 ---
 name: prompt-craft
 description: >
-  Write, review, or tune prompts and system instructions for LLMs, including
-  AGENTS.md, CLAUDE.md, agent skills, tool descriptions, and per-model prompt
-  adaptation. Use when crafting a new prompt, improving an existing one,
-  designing an agent, or asking how to prompt GPT-5.6, GPT-5, Claude Fable 5,
-  Claude Opus, Gemini, Kimi, Qwen, DeepSeek, GLM, MiniMax, or smaller/local
-  models.
+  Use when writing or reviewing LLM prompts, system instructions, agent
+  configurations, or model-specific guidance; it produces concise, testable prompts with clear contracts.
 ---
 
 # Prompt Craft

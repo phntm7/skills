@@ -1,16 +1,8 @@
 ---
 name: session-retro
 description: >
-  Run an end-of-session retrospective on the agent's own work in the current
-  session: surface friction actually encountered — failed or retried tool
-  calls, permission denials, confusing or contradictory docs and instructions,
-  misleading names, tricky prompt wording, environment surprises — and propose
-  concrete changes that make the codebase easier for the next agent. Use when
-  the user says "let's do a retro", "retrospective", "post-mortem", asks "any
-  issues this session?", "what could be improved?", "anything you didn't
-  mention?", or asks how to make the repo or docs easier for agents to work
-  in. Not for scanning past session history across projects for automation
-  patterns — that is a workflow audit, a different task.
+  Use when retrospecting on concrete friction from the current session; it turns
+  tool failures, confusing instructions, and environment surprises into actionable improvements.
 ---
 
 # Session Retro

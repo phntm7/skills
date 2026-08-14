@@ -1,17 +1,8 @@
 ---
 name: linkup-search
 description: >
-  Search the web, fetch page content, and run deep research with the Linkup
-  CLI (`linkup`). Use when a task needs real-time web search, granular or
-  filtered search queries (domain/date filters, structured JSON output),
-  scraping a URL into markdown, LinkedIn profile/company/post extraction,
-  offloading a multi-step research question to an autonomous research agent,
-  or batch/async web lookups. Triggers: "search the web", "look up online",
-  "fetch this page", "scrape", "research X in depth", "find recent news",
-  "linkup". If more than one of the linkup/parallel-cli/tvly CLIs is
-  installed, consult the web-search-router skill first to pick the engine.
-  Not for browser automation or authenticated pages (use a browser tool
-  instead).
+  Use when Linkup is requested or selected for filtered web search, page extraction,
+  LinkedIn data, batch lookup, or deep research; it provides structured, cost-aware CLI workflows.
 ---
 
 # Linkup CLI

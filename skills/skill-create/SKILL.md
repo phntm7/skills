@@ -1,11 +1,8 @@
 ---
 name: skill-create
 description: >
-  Create, review, or improve portable Agent Skills for Codex, Claude Code,
-  OpenCode, skills.sh, and other SKILL.md-compatible agents. Use when building
-  a new skill, updating an existing skill, designing trigger descriptions,
-  adding scripts/references/assets, validating skill structure, or turning a
-  repeated workflow into reusable agent instructions.
+  Use when creating or improving a portable Agent Skill, its trigger description,
+  resources, scripts, or metadata; it provides a compatible structure and validation workflow.
 ---
 
 # Skill Create

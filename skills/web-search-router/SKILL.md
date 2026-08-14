@@ -1,15 +1,9 @@
 ---
 name: web-search-router
 description: >
-  Pick the right web CLI — Linkup (`linkup`), Parallel (`parallel-cli`), or
-  Tavily (`tvly`) — for a given web task, based on hands-on benchmarks. Use
-  BEFORE any web search, fetch, research, crawl, entity lookup, or monitoring
-  task when more than one of these CLIs is installed, or when deciding which
-  engine fits: news, LinkedIn data, entity lists, site crawling, structured
-  output, regional/Ukrainian queries, live prices, or offloaded deep
-  research. Triggers: "search the web", "which search tool", "research X",
-  "find companies", "crawl docs", "monitor the web", "linkup vs parallel vs
-  tavily".
+  Use before web search, extraction, crawling, entity lookup, or monitoring when
+  Linkup, Parallel, and Tavily are available; it selects the best engine by capability,
+  reliability, and cost.
 ---
 
 # Web search CLI router

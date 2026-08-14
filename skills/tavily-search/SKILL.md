@@ -1,16 +1,9 @@
 ---
 name: tavily-search
 description: >
-  Search the web, extract page content, crawl or map websites, and run deep
-  research with the Tavily CLI (`tvly`). Use when a task needs real-time web
-  search (including news and finance topic modes with dated results), URL
-  content extraction, bulk documentation crawling, site URL discovery, or an
-  AI research report with citations. Triggers: "search the web", "look up
-  online", "find articles/news about", "fetch/extract this page", "crawl
-  these docs", "map this site", "research X in depth", "tvly", "tavily". If
-  more than one of the linkup/parallel-cli/tvly CLIs is installed, consult
-  the web-search-router skill first to pick the engine. Not for browser
-  automation or authenticated pages (use a browser tool instead).
+  Use when Tavily is requested or selected for news or finance search, page
+  extraction, site mapping or crawling, or cited deep research; it provides
+  cost-aware CLI workflows.
 ---
 
 # Tavily CLI

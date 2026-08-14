@@ -1,14 +1,8 @@
 ---
 name: github-ops
 description: >
-  Operate GitHub with the gh CLI instead of web-fetching github.com: search
-  code/repos/issues/PRs across GitHub or in one repo, read files and READMEs
-  from remote repos without cloning, check GitHub Actions runs and fetch failed
-  CI logs, list and post PR comments and reviews, work with issues and
-  releases, and call the REST/GraphQL API via gh api. Use when a task touches a
-  GitHub repo that is not checked out locally, mentions CI/Actions failures, PR
-  feedback or review comments, GitHub search, or when tempted to fetch
-  github.com or raw.githubusercontent.com URLs.
+  Use when working with remote GitHub repositories, Actions, PRs, issues,
+  releases, or code search; it provides efficient gh CLI workflows without cloning.
 ---
 
 # GitHub Operations via gh CLI
