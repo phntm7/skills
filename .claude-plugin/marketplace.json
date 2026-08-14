@@ -9,7 +9,7 @@
       "name": "phntm",
       "source": "./",
       "description": "Personal agent skills for reusable AI coding workflows.",
-      "version": "0.20.0",
+      "version": "0.20.1",
       "author": {
         "name": "phntm7"
       },
