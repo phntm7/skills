@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// DeepSWE leaderboard fetcher for the deepswe-benchmark skill.
+// DeepSWE leaderboard fetcher for the coding-benchmarks skill.
 //
 // Fetches https://deepswe.datacurve.ai/artifacts/<version>/leaderboard-live.json
 // (v1.1 by default; v1 is a frozen, outdated benchmark) and prints a compact,

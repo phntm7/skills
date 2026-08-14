@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// FrontierCode leaderboard fetcher for the frontiercode-benchmark skill.
+// FrontierCode leaderboard fetcher for the coding-benchmarks skill.
 //
 // Fetches https://cognition.com/data/frontiercode-leaderboard/data.json — the
 // same file the leaderboard page (cognition.com/frontiercode) loads

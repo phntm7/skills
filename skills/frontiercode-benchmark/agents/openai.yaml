@@ -1,4 +1,0 @@
-interface:
-  display_name: "FrontierCode Benchmark"
-  short_description: "Compare LLM coding performance via the FrontierCode leaderboard."
-  default_prompt: "Use $frontiercode-benchmark to compare model performance and cost before picking a model."
