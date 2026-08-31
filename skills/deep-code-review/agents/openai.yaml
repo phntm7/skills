@@ -1,4 +1,4 @@
 interface:
   display_name: "Deep Code Review"
-  short_description: "In-depth, full-scale PR/change-set review across all quality dimensions"
-  default_prompt: "Use $deep-code-review to run a rigorous, full-scale review of a PR or large change set — correctness, architecture, simplicity, readability, naming, types, tests, security, performance — and return prioritized, PR-comment-ready findings with a verdict."
+  short_description: "In-depth, dynamically routed PR/change-set/codebase review with verified findings"
+  default_prompt: "Use $deep-code-review to run a rigorous review of a PR, branch, or codebase — it routes checks (correctness, architecture, simplicity, naming, tests, security, performance, AI-slop, adversarial) by risk profile, verifies Blocker/Major findings before reporting, and returns prioritized, PR-comment-ready findings with a verdict."

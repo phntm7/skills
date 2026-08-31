@@ -1,133 +1,178 @@
 ---
 name: deep-code-review
 description: >
-  Use when a PR, large feature, or refactor needs a rigorous pre-merge review; it
-  produces prioritized findings across correctness, architecture, maintainability,
-  tests, security, and performance.
+  Use when a PR, large feature, refactor, or whole codebase needs a rigorous
+  review; it routes dynamic checks — correctness, architecture, simplicity,
+  naming, tests, security, performance, AI-slop, adversarial — and returns
+  prioritized, verified findings. Also triggers on "hostile review",
+  "adversarial review", "tear this apart", "security review of this PR",
+  "find the slop", "review the codebase", or "what did the AI over-engineer".
 ---
 
 # Deep Code Review
 
-A rigorous, full-scale review for substantial changes — large refactors, new features, medium/large PRs. The job is to find what matters and say it clearly: correctness bugs, structural regressions, missed simplifications, and unreadable code. Be ambitious about structure and demanding about quality, without drowning the signal in nits.
+A rigorous, full-scale review for substantial changes — large refactors, new features, medium/large PRs, or a whole codebase. The job is to find what matters and say it clearly: correctness bugs, security holes, structural regressions, AI-generated slop, useless tests, and missed simplifications, without drowning the signal in nits.
 
-This is a review-only task. Investigate the change and report what you find — the output is findings, not code changes. Do not modify the code under review. Delivering or posting those findings (to a PR or anywhere else) is the caller's responsibility, outside this task's scope.
+This is a review-only task. Investigate and report — the output is findings, not code changes. Do not modify the code under review. Delivering or posting the findings (to a PR or anywhere else) is the caller's responsibility.
+
+## Two roles
+
+Decide once, at the start:
+
+- **Reviewer (default).** You were spawned to review — you have an assigned scope, or you cannot spawn dedicated reviewer agents. Skip the [orchestrator playbook](#orchestrator-playbook). You do the whole review yourself on your scope.
+- **Orchestrator.** You are the top-level agent, you *can* spawn dedicated reviewer agents, **and** the review is big (> ~20 files or multiple subsystems, or a whole codebase) or the user asked you to run one. Partition per the [orchestrator playbook](#orchestrator-playbook), spawn reviewers, and synthesize yourself. You never write findings from delegated summaries — but synthesis, adjudication, and the verdict are yours alone.
+
+When in doubt, you are the Reviewer.
 
 ## When to use
 
-- A large refactor or feature landed and needs a deep review before merge.
-- "Review PR `<url>` in depth" / "do a full review of this branch".
-- An especially strict maintainability / abstraction-quality audit is wanted.
+- A large refactor or feature needs a deep review before merge.
+- "Review PR `<url>` in depth" / "do a full review of this branch" / "review the codebase".
+- A hostile/adversarial pass, a security review, or a strict slop/maintainability audit is wanted.
 
-Not for trivial diffs (a few lines, a config bump, a typo). Those don't need the machinery — review them inline.
+Not for trivial diffs (a few lines, a config bump, a typo) — review those inline.
 
-## The five steps
+## The six steps
 
 ```
-1. Scope    → resolve the change set, read the diff + surrounding context
-2. Plan     → pick the fan-out strategy from the diff size
-3. Review   → apply the lenses yourself, or delegate to read-only reviewers
-4. Synthesize → merge, dedupe, adjudicate conflicts, prioritize
-5. Deliver  → prioritized findings + a verdict against the approval bar
+1. Scope      → resolve the change set (or tree), read past the diff
+2. Route      → pick which checks run, from the diff's risk profile
+3. Review     → apply every routed check yourself; scouts fetch facts only
+4. Verify     → prove or drop every Blocker/Major before reporting it
+5. Synthesize → merge, dedupe, adjudicate, prioritize
+6. Deliver    → prioritized findings + a verdict against the approval bar
 ```
 
-### 1. Scope the change set
+### 1. Scope
 
-Resolve what to review, in this order of preference:
+Resolve what to review, in order of preference:
 
-- **PR URL or number** — read its description, discussion, and full diff with whatever PR tooling your environment provides (a platform PR view, `gh pr view` / `gh pr diff`, the host's API, or a saved patch). On a large PR, list the changed files first, then read slices.
-- **Branch** — `git diff <base>...HEAD` against the merge base (default base `main`/`master`; confirm if ambiguous).
+- **PR URL or number** — read its description and full diff with whatever PR tooling the environment provides. On a large PR, list changed files first, then read slices. Read the PR discussion only **after** your independent pass (step 3) — fresh eyes first.
+- **Branch** — `git diff <base>...HEAD` against the merge base (default `main`/`master`; confirm if ambiguous).
 - **Explicit range** — whatever the user names.
+- **Tree scope** — "review the codebase / this module": the scope is a file tree, not a diff. Diff-only rules below don't apply; everything is "pre-existing", so severity comes from impact alone, and the slop and architecture checks carry extra weight.
 
-Then **read past the diff**. A diff-only review misses integration bugs.
+Then **read past the diff**. A diff-only review misses integration bugs:
 
-- Read each changed file, not just the hunks — context around the change matters.
-- For changed exported symbols, find the callers (a find-references / go-to-definition lookup if your tools offer one, otherwise a project-wide search for the symbol) and check they still hold.
+- Read each changed file, not just the hunks.
+- For changed exported symbols, find the callers (find-references if available, else project-wide search) and check they still hold.
 - Read the immediate collaborators of changed modules.
 
-**Classify the change** before reviewing — this drives Step 2:
+**Classify the change** — this drives step 2: size, areas/modules, languages, and **risk surfaces** (auth, money, persistence/migrations, concurrency, input parsing, secrets, permissions, public contracts, anything destructive). Classify by **risk, not size** — Heartbleed was 2 lines, and a refactor is HIGH risk until proven LOW.
 
-- **Size**: files touched, net lines added/removed.
-- **Areas / modules**: which subsystems the diff spans.
-- **Languages**: per-language conventions apply (see `references/readability-naming.md`).
-- **Risk surfaces**: auth, money, persistence/migrations, concurrency, public API/contracts, anything destructive. These get the harshest scrutiny.
+### 2. Route the checks
 
-### 2. Plan the fan-out
+You decide which checks run — no configuration, no fixed list. Weight by what the change actually touches:
 
-For anything non-trivial, split the work up — across sub-agents when your runtime supports them, otherwise lens by lens yourself. Match the strategy to the diff:
+| Check | Reference | Runs when |
+|---|---|---|
+| Correctness & edge cases | [correctness-and-risk.md](references/correctness-and-risk.md) | always |
+| Readability & naming | [readability-naming.md](references/readability-naming.md) | always |
+| Slop & over-engineering | [slop.md](references/slop.md) | always |
+| Tests & coverage | [correctness-and-risk.md](references/correctness-and-risk.md) | the diff touches logic (not pure docs/config) |
+| Architecture & depth | [architecture.md](references/architecture.md) | module shape, ownership, or seams change; or > ~5 files |
+| Security | [security.md](references/security.md) | a risk surface is touched — including refactors of one |
+| Adversarial | [adversarial.md](references/adversarial.md) | high-risk surface; the user asked for a hostile pass; author confidence looks unearned; or two other checks disagree |
+| Performance & orchestration | [correctness-and-risk.md](references/correctness-and-risk.md) | hot paths, loops over I/O, data-volume code |
 
-| Diff size | Strategy |
+Load a check's reference when you apply it. The full review standards — flag list, remedies, approval bar, tone — live in [review-rubric.md](references/review-rubric.md); load it before reviewing.
+
+If the caller requested specific modes (e.g. only `security` + `adversarial`), those are the routed set — but when the diff plainly warrants an unrequested check (it touches auth and security wasn't asked for), apply it and say so.
+
+**Vocabulary boundary:** the architecture check uses the precise terms in `architecture.md` exactly — *module, interface, implementation, depth, deep, shallow, seam, adapter, leverage, locality*. Every other check uses plain language.
+
+### 3. Review — the judgment is yours
+
+You — the model reading this skill — apply every routed check yourself, on code you read yourself. Sub-agents, where available, are **scouts**: they may enumerate callers, list changed files, or fetch surrounding context. They never apply a check, never assign a severity, never write a finding. A review whose findings were produced by a cheaper delegate is not your review.
+
+Read everything before forming any opinion:
+
+- Read all relevant files, commits, or plan content fully.
+- Identify the stated intent vs. what the code actually does.
+- Note any TODOs, skipped error handling, or assumptions baked into the logic.
+
+Then work the routed checks. Scope discipline while reviewing a diff:
+
+- Focus on new code added in the PR (lines starting with `+`), and on issues introduced by this change. Deleted code serves as reference context — don't comment on it.
+- Avoid commenting on correct code or unchanged code. A finding's anchor may sit outside the changed lines only when the required repair belongs there.
+- Favor precision over recall: report only defects that are likely real in the changed code and its reachable context. A false positive costs reviewer trust.
+
+**Determining what to flag** (severity-asymmetric confidence):
+
+- For clear bugs and security issues, be thorough. Do not skip a genuine problem just because the trigger scenario is narrow.
+- For lower-severity concerns, be certain before flagging. If you cannot confidently explain why something is a problem with a concrete scenario, do not flag it.
+- Each issue must be discrete and actionable, not a vague concern about the codebase in general.
+- Do not speculate that a change might break other code unless you can identify the specific affected code path.
+- Do not flag intentional design choices or stylistic preferences unless they introduce a clear defect.
+- When confidence is limited but the potential impact is high (data loss, security), report it with an explicit note on what remains uncertain. Otherwise, prefer not reporting over guessing.
+- An empty findings list is an acceptable outcome. Never invent issues to fill a review.
+
+### 4. Verify
+
+Before a **Blocker** or **Major** finding may be reported, run it through [verification.md](references/verification.md): restate the claim, trace it end-to-end, argue against it (and against dismissing it), and drop what fails — except protected subjects, which are never dropped on doubt. Minor/Nit findings skip the machinery.
+
+Never present unfinished research: if a finding depends on "whether the backend handles X", go read the backend. Targeted read-only checks are allowed — the specific test covering the path, a scoped typecheck — never mutating commands, never a blanket project-wide pipeline.
+
+### 5. Synthesize
+
+Yours alone — never delegated:
+
+- **Merge & dedupe** — the same issue found by multiple checks at one location becomes one finding.
+- **Adjudicate conflicts** — checks disagree ("extract an abstraction" vs "delete this code"): settle with the deletion test (`architecture.md`), the simplicity mindsets, and the approval bar. Record the call.
+- **Group only when fixes must land together** — findings that share code, invariants, or root cause; not when merely thematically related.
+- **Prioritize** — severity first, then risk surface. Lead with structural opportunities and blockers.
+- **Cap the nits** — a few high-conviction findings beat an exhaustive dump. If there are structural problems, nits wait.
+
+### 6. Deliver
+
+Default output: **prioritized findings as your response**, formatted per [report-format.md](references/report-format.md) — severity-tagged, `path:line`-anchored, each with a concrete remedy, written to the **outsider contract** (understandable without knowing the repo), led by a one-paragraph summary and a **verdict** (`Approve` / `Approve with nits` / `Request changes`). Hostile mode uses the VERDICT variant in the same doc.
+
+Write a report file or HTML only when explicitly asked (see `report-format.md`).
+
+## Orchestrator playbook
+
+Only for the Orchestrator role. Every spawned reviewer is a full Reviewer over its slice — give each one the scope (diff slice, area, or file list), the routed/requested modes, the base revision, the spec or acceptance criteria, the severity scale, and the findings schema.
+
+| Situation | Split |
 |---|---|
-| **Small** (≤ ~5 files, focused) | Single pass yourself, all lenses. No fan-out. |
-| **Medium** (~5–20 files) | One reviewer per lens over the whole diff (or take the lenses one at a time yourself). |
-| **Large** (> ~20 files, or multiple subsystems) | **Partition by area/module first**, then review each partition across the lenses — one reviewer per partition, or a lens × area grid for very large PRs. |
+| ≤ ~20 files, high stakes | **Cross-family duplicates**: two reviewers, both comprehensive over the whole diff; adjudicate disagreements yourself |
+| > ~20 files or multiple subsystems | **By area**: one reviewer per subsystem, each running *all* routed checks on its area |
+| Heavy special passes warranted | **By mode, sparingly**: a dedicated adversarial- or security-only reviewer *in addition to* per-area comprehensive coverage, never instead of it |
+| Big and high-stakes | Area partition × two families per risky area |
 
-If your runtime supports sub-agents, delegate each slice to a read-only reviewer running in parallel; otherwise work the slices yourself. Whoever reviews a slice investigates and reports only: don't modify code, and don't kick off project-wide builds, tests, linters, or formatters — N reviewers each running the full pipeline is wasteful and redundant, and nothing is being changed. Targeted verification is the main agent's job (step 4), not every reviewer's.
-
-Give every reviewer (yourself included) the diff slice it owns, the relevant reference doc(s) for its lens, the **severity scale** and the **findings schema** (below), and the brief to return only high-conviction findings.
-
-### 3. The review lenses
-
-Eight lenses. Each has a home reference doc — load it when you (or a delegated reviewer) apply that lens. Don't apply every lens with equal weight; weight by what the diff actually touches and by risk surface.
-
-1. **Correctness & edge cases** — `references/correctness-and-risk.md`. Bugs, broken invariants, off-by-one, null/empty/error paths, race conditions, missed cases. The diff must do what it claims.
-2. **Architecture & depth** — `references/architecture.md`. Deep vs shallow modules, seams and adapters, the deletion test, leaked boundaries, logic in the wrong layer.
-3. **Simplicity & entropy** — `references/review-rubric.md` + `references/simplicity-mindsets/`. "Code judo" reframings, deletion bias, less total code, spaghetti-conditional growth, file-size explosions.
-4. **Readability & naming** — `references/readability-naming.md`. Names that mislead or obscure, magic numbers, unclear booleans, convention drift. The biggest lever on human-readability.
-5. **Types & boundaries** — `references/review-rubric.md`. Unnecessary `any`/`unknown`/casts/optionality, ad-hoc object shapes, silent fallbacks papering over unclear invariants.
-6. **Tests & coverage** — `references/correctness-and-risk.md`. Are the risky branches tested? Tests asserting behavior through an interface, not implementation detail? No mocks where a real test fits? Are deleted-behavior tests removed?
-7. **Security** — `references/correctness-and-risk.md`. Injection, authz/authn gaps, secret handling, unsafe deserialization, SSRF, trust-boundary crossings introduced by the diff.
-8. **Performance & orchestration** — `references/correctness-and-risk.md`. Needless allocation/copies, N+1s, avoidable sequential work that should run in parallel, non-atomic updates that can leave half-applied state.
-
-**Vocabulary boundary:** the architecture lens uses the precise terms in `references/architecture.md` exactly — *module, interface, implementation, depth, deep, shallow, seam, adapter, leverage, locality*. Do not substitute "component", "service", or "boundary" there. Every other lens uses plain language — don't force seam/adapter vocabulary onto a naming or bug finding.
-
-The full review rubric — the strict rules, what to flag aggressively, preferred remedies, the approval bar, and the review tone — lives in **`references/review-rubric.md`**. Load it before reviewing. The standards there are the bar; the lenses are how you cover the surface.
-
-### 4. Synthesize
-
-The hard part, and yours alone — never delegate synthesis. From the raw findings:
-
-- **Merge & dedupe** — collapse the same issue reported by multiple lenses at one location into one finding.
-- **Adjudicate conflicts** — lenses disagree (e.g. "extract an abstraction" vs "delete this code"). Settle with the deletion test (`references/architecture.md`), the simplicity mindsets, and the approval bar. Record the call; don't ship both.
-- **Verify what's checkable** — for a suspected correctness, security, or regression finding, the main agent may run a *targeted, read-only* check to confirm it before raising it: the specific test that covers the path, a typecheck or static-analysis pass scoped to the changed files. Never mutating commands, never a blanket project-wide pipeline, and never fanned out to every reviewer.
-- **Prioritize** — order by severity, then by risk surface. Lead with structural opportunities and blockers.
-- **Cap the nits** — a long list of cosmetic notes buries the real issues. Prefer a few high-conviction findings over an exhaustive nit dump. If there are structural problems, nits wait.
-
-### 5. Deliver
-
-Default output: **prioritized findings as your response**, formatted per `references/report-format.md` — PR-comment-ready markdown (severity-tagged, `path:line` anchored, with a concrete remedy each), led by a one-paragraph summary and a **verdict** against the approval bar (`Approve` / `Approve with nits` / `Request changes`).
-
-Do **not** write a report file or generate the HTML report by default. Only when asked:
-
-- "write the review to a file" → markdown report (`references/report-format.md`).
-- an explicit request for a visual/HTML report → **HTML report mode** (`references/report-format.md`).
-
-Delivering the findings — posting to the PR or handing them back — is the caller's responsibility, outside this task's scope. Produce findings clean enough to paste directly.
+Prefer the area split: a reviewer that runs all checks on one slice keeps cross-check insight ("the naming bug *is* the security bug"). Reviewers are leaves — they never re-delegate any part of the review. Two reviewers independently flagging the same location is the strongest confidence signal available; treat it as confirmed. Synthesis (step 5), verification of disputed findings, and the verdict remain yours.
 
 ## Severity scale
 
-Used by every lens, every finding, and the verdict.
+Used by every check, every finding, and the verdict.
 
 - **Blocker** — must fix before merge. Correctness bug, security hole, data loss, broken contract, or a structural regression that fails the approval bar.
-- **Major** — should fix. A real maintainability/design problem: spaghetti growth, a shallow module where a deep one belongs, a leaked boundary, a file-size explosion, an untested risky path, a missed simplification that removes real complexity.
+- **Major** — should fix. A real maintainability/design problem: spaghetti growth, a shallow module where a deep one belongs, a leaked boundary, an untested risky path, a useless test masking one, a missed simplification that removes real complexity.
 - **Minor** — recommended. Localized clarity, naming, or type issue.
-- **Nit** — optional, preference-level. Don't flood; group or omit when bigger issues exist.
+- **Nit** — optional, preference-level. Group or omit when bigger issues exist.
 
 ## Findings schema
 
-Every finding, from every lens, in this shape (full format and examples in `references/report-format.md`):
+Every finding, from every check, in this shape (rendering and the outsider contract in [report-format.md](references/report-format.md)):
 
 - **severity** — Blocker / Major / Minor / Nit
-- **lens** — which lens found it
+- **check** — which check found it
 - **location** — `path:line` or range
-- **problem** — what's wrong, 1–2 sentences
-- **why** — the impact / why it matters
+- **problem** — what's wrong, 1–2 sentences, with the concrete trigger scenario
+- **why** — the impact, 1–2 sentences
 - **remedy** — the concrete fix, with a short code or diff sketch when it helps
+
+Write every finding for an outsider: a competent engineer who has never opened this repo — or a fresh implementer agent with no session history — must understand where the problem is, what causes it, and how to fix it from the finding alone.
 
 ## References
 
 - `references/review-rubric.md` — the strict review standards, flag list, remedies, approval bar, tone.
-- `references/correctness-and-risk.md` — checklists for the correctness, tests, security, and performance lenses.
-- `references/architecture.md` — deep/shallow modules, seams, adapters, deletion test, testing strategy, vocabulary.
+- `references/correctness-and-risk.md` — correctness, tests (incl. useless-test catalog), performance.
+- `references/security.md` — risk triage, escalation triggers, attacker modeling, blast radius, variant hunt.
+- `references/adversarial.md` — hostile persona, attack-surface inventory, falsification moves, catch-all sweep.
+- `references/slop.md` — over-engineering tags, waste taxonomy, AI-slop tells for code and prose.
+- `references/verification.md` — claim restatement, devil's advocate, self-filter; applied in step 4.
+- `references/architecture.md` — deep/shallow modules, seams, adapters, deletion test, vocabulary.
 - `references/readability-naming.md` — naming conventions and readability patterns by language.
-- `references/simplicity-mindsets/` — philosophical grounding for the simplicity lens; load when simplicity is the crux of a finding.
-- `references/report-format.md` — findings format, verdict, optional written + HTML report modes.
+- `references/simplicity-mindsets/` — philosophical grounding for simplicity findings.
+- `references/report-format.md` — outsider contract, findings rendering, verdict, report modes.

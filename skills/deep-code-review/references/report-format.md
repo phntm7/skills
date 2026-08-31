@@ -4,6 +4,20 @@ How `deep-code-review` delivers findings. Default is **inline findings as the ag
 
 The severity scale (`Blocker` / `Major` / `Minor` / `Nit`) and the per-finding schema are defined in `SKILL.md`. This doc fixes the exact rendering.
 
+## Write for the outsider
+
+Every finding must be understandable by a competent engineer who has never opened this repo — or a fresh implementer agent with no session history: where the problem is, what causes it, what breaks, and how to fix it, from the finding alone.
+
+- Keep each issue description concise. Write so the reader grasps the point immediately without close reading. Use a matter-of-fact, helpful tone. Avoid accusatory language, excessive praise, or filler phrases like "Great job", "Thanks for".
+- Be direct about why something is a problem and the realistic scenario where it manifests. Name the concrete trigger ("two concurrent `POST /checkout` for the same cart both pass the stock check"), never the abstract risk ("potential race condition concerns").
+- Communicate severity accurately. Do not overstate impact. If an issue only arises under specific inputs or environments, say so upfront.
+- Gloss internal names on first use, in half a line: "`OrderPipeline` (the module that turns carts into shipments)". If a term can't be glossed in half a line, the finding probably isn't understood yet either.
+- Plain verbs over jargon: "leaks the DB password into logs", not "presents a credential-exposure vector"; "two modules both decide the price", not "violates SRP". The architecture glossary (module/seam/deep/shallow) stays permitted in architecture findings, with its meaning shown.
+- Hedge ban: "perhaps consider", "it might be worth noting", "robustness concerns", "for improved maintainability". Either it's a finding with a named consequence or it isn't one.
+- Length budget: problem ≤2 sentences, why ≤2, remedy concrete. A finding pushing past ~120 words of prose is usually two findings, or an ungrounded one.
+- The verdict paragraph is plain English — no metrics theater.
+- No AI-prose tells in your own output (summary-style transitions, spec-sheet voice, rule-of-three padding — see `slop.md`); the review must not read like the slop it flags.
+
 ## Default: inline findings
 
 Structure the response as: **verdict + summary**, then **findings grouped by severity**, then optional **structural opportunities**. Nothing written to disk.
@@ -33,7 +47,7 @@ Group by severity, highest first. Each finding is self-contained and **postable 
 ### Blockers
 
 #### 1. Unauthenticated admin path
-- **Lens:** security · **Location:** `src/server/admin.ts:88`
+- **Check:** security · **Location:** `src/server/admin.ts:88`
 - **Problem:** `isAdmin` is read straight from the `x-role` request header with no verification.
 - **Why:** Any client can set the header and reach admin mutations. Privilege escalation.
 - **Remedy:** Derive role from the verified session, not the request:
@@ -46,7 +60,7 @@ Group by severity, highest first. Each finding is self-contained and **postable 
 ### Major
 
 #### 3. `OrderPipeline` past 1k lines
-- **Lens:** architecture · **Location:** `src/orders/pipeline.ts` (was 870, now 1180)
+- **Check:** architecture · **Location:** `src/orders/pipeline.ts` (was 870, now 1180)
 - **Problem:** The PR pushes a previously scannable file over 1000 lines by inlining intake, pricing, and fulfilment branches.
 - **Why:** The three concerns are now braided; a reader must hold all of them to change one. Shallow growth, low locality.
 - **Remedy:** Split per concern, or dispatch on a typed `OrderKind` so the branches collapse into one table. See the deletion test in `architecture.md`.
@@ -56,11 +70,14 @@ Group by severity, highest first. Each finding is self-contained and **postable 
 
 ### Nits
 - `usrCfg` → `userConfig` (`src/config.ts:12`); group rather than list individually if many.
+- Slop nits use the one-line tag format from `slop.md`:
+  `src/retry.ts:L52-71: delete: retry wrapper around an idempotent local call. Nothing replaces it.`
+  `src/dates.ts:L4: native: moment.js imported for one format call. Intl.DateTimeFormat, 0 deps.`
 ```
 
 Rules:
 - Number findings continuously so the caller can reference "finding 3".
-- Always include `lens` and `location`. Anchor to `path:line` (or a range).
+- Always include `check` and `location`. Anchor to `path:line` (or a range).
 - `remedy` is concrete — a sketch the author can act on, not "consider refactoring".
 - Omit empty severity sections.
 - **Don't flood with nits.** If there are blockers/majors, collapse nits into a short grouped list or defer them with one line ("plus ~6 naming nits, happy to list on request").
@@ -68,6 +85,17 @@ Rules:
 ### Structural opportunities (optional closing section)
 
 When the review surfaced a "code-judo" reframe or a deepening worth more than a single inline comment, end with a short section naming it — the one restructuring you'd push for, in 3–5 lines. This is where ambition lives; don't bury it inside the minor findings.
+
+### Hostile mode: the VERDICT closer
+
+When the review ran as a hostile/adversarial pass (`adversarial.md`) and the user asked for the hostile framing, replace the opening verdict block with a closing `## VERDICT` section:
+
+- One paragraph: direct assessment of shippability — no hedging.
+- **Immediate actions required:** numbered list of the 3–5 blockers.
+- **Long-term:** one honest strategic opinion (is the approach sound, or is there a better path?)
+- Sign off: `*— A very disappointed senior developer*`
+
+The findings themselves keep the standard rendering and the outsider contract — hostility lives in the directness of the verdict, not in vague insults.
 
 ## Opt-in: written markdown report
 
