@@ -47,7 +47,7 @@ playwriter -s <id> -f script.js       # longer script from file
 playwriter -s <id> --timeout 30000 -e '<js>'   # default timeout is 10s
 ```
 
-Sandbox scope: `state`, `page`, `context`, `require` (Node built-ins; no ESM `import`), Node globals, plus helpers like `snapshot`, `getLatestLogs`, `getPageMarkdown`, `getCleanHTML`, `waitForPageLoad`, `getCDPSession`, `screenshotWithAccessibilityLabels`, `resizeImageForAgent`, `recording`.
+Sandbox scope: `state`, `page`, `context`, `require` (Node built-ins; no ESM `import`), Node globals, plus helpers: `snapshot`, `getLatestLogs`, `getPageMarkdown`, `getCleanHTML`, `waitForPageLoad`, `getCDPSession`, `screenshotWithAccessibilityLabels`, `refToLocator`, `resizeImageForAgent` (alias `resizeImage`), `getLocatorStringForElement`, `getStylesForLocator`, `createDebugger`, `createEditor`, `ghostCursor`, `recording`, `createDemoVideo` (and more — see `playwriter skill`).
 
 **Quoting rules** — bash corrupts JS silently if you get this wrong:
 
@@ -62,7 +62,7 @@ Sandbox scope: `state`, `page`, `context`, `require` (Node built-ins; no ESM `im
   )"
   ```
 
-- Never use `$'...'` (breaks `\n` in JS regexes) or unquoted double quotes.
+- Avoid `$'...'` — the CLI supports it, but `\n` and `\t` become special and conflict with JS regexes; the heredoc form above is safer. Never use unquoted double quotes.
 
 ## Core Loop: Observe → Act → Observe
 
@@ -115,17 +115,17 @@ For multi-step tests write a script file and run `playwriter -s 3 -f test.js` �
 playwriter -s 3 -e 'await state.page.screenshot({ path: "/tmp/shot.png", scale: "css" })'
 ```
 
-Always `scale: "css"` (avoids 2–4x hi-DPI bloat). Reading it back into context? `resizeImageForAgent({ input: "/tmp/shot.png" })` first. To *find* elements on visually complex pages (grids, maps, galleries) use `screenshotWithAccessibilityLabels({ page })` — labeled refs resolve via `refToLocator({ ref: "e5" })`.
+Always `scale: "css"` (avoids 2–4x hi-DPI bloat). Reading it back into context? `resizeImageForAgent({ input: "/tmp/shot.png" })` — the resized image is automatically included in the response, no further step needed. To *find* elements on visually complex pages (grids, maps, galleries) use `screenshotWithAccessibilityLabels({ page })` — pass `--timeout 20000` for complex pages; labeled refs resolve via `refToLocator({ ref: "e5" })`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 | --- | --- |
-| "extension is not connected" / "no browser tabs have Playwriter enabled" | Ask the user to click the Playwriter extension icon on the target tab (turns green). Only ask after the error — don't preemptively. |
-| Chrome not running | `open -a "Google Chrome" --args --profile-directory=Default` (macOS), then retry. |
-| Stale/broken connection | `playwriter session reset <id>` |
-| All pages return `about:blank` | Chrome bug — ask the user to restart Chrome. |
-| Internal errors | `playwriter logfile` prints the relay log path; grep it. |
+| "extension is not connected" / "no browser tabs have Playwriter enabled" | Run `playwriter browser list` to confirm the extension is connected; if not, ask the user to click the Playwriter extension icon on the target tab (turns green). Only ask after the error — don't preemptively. |
+| Chrome not running | `open -a "Google Chrome" --args --profile-directory=Default` (macOS), then retry. For automatic tab capture (screen recording) add `--allowlisted-extension-id=jfeammnjpkecdekppnclgkkffahnhfhe --auto-accept-this-tab-capture` to the args. |
+| Stale/broken connection | `playwriter session reset <id>`, then reassign `state.page` — the old page object is dead after a reset (close() on it throws an internal error). |
+| All pages return `about:blank` | Not in current CLI docs — verify against `playwriter skill`; if it persists after a fresh session and `session reset`, ask the user to restart Chrome. |
+| Internal errors | `playwriter logfile` prints the relay and CDP log paths; grep them. |
 | No extension possible (CI, containers) | `playwriter session new --browser headless` (after `playwriter browser install`), or `--direct` against a CDP endpoint. |
 
 ## Full Reference
