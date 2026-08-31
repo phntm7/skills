@@ -3,10 +3,11 @@ name: deep-code-review
 description: >
   Use when a PR, large feature, refactor, or whole codebase needs a rigorous
   review; it routes dynamic checks — correctness, architecture, simplicity,
-  naming, tests, security, performance, AI-slop, adversarial — and returns
-  prioritized, verified findings. Also triggers on "hostile review",
-  "adversarial review", "tear this apart", "security review of this PR",
-  "find the slop", "review the codebase", or "what did the AI over-engineer".
+  naming, tests, security, performance, duplication, AI-slop, adversarial —
+  and returns prioritized, verified findings. Also triggers on "hostile
+  review", "adversarial review", "tear this apart", "security review of this
+  PR", "find the slop", "find duplicate code", "review the codebase", or
+  "what did the AI over-engineer".
 ---
 
 # Deep Code Review
@@ -74,6 +75,7 @@ You decide which checks run — no configuration, no fixed list. Weight by what 
 | Security | [security.md](references/security.md) | a risk surface is touched — including refactors of one |
 | Adversarial | [adversarial.md](references/adversarial.md) | high-risk surface; the user asked for a hostile pass; author confidence looks unearned; or two other checks disagree |
 | Performance & orchestration | [correctness-and-risk.md](references/correctness-and-risk.md) | hot paths, loops over I/O, data-volume code |
+| Duplication | [duplication.md](references/duplication.md) | a clone-detection CLI (dupehound, jscpd) is available AND the diff adds substantial new code, or scope is a tree |
 
 Load a check's reference when you apply it. The full review standards — flag list, remedies, approval bar, tone — live in [review-rubric.md](references/review-rubric.md); load it before reviewing.
 
@@ -171,6 +173,7 @@ Write every finding for an outsider: a competent engineer who has never opened t
 - `references/security.md` — risk triage, escalation triggers, attacker modeling, blast radius, variant hunt.
 - `references/adversarial.md` — hostile persona, attack-surface inventory, falsification moves, catch-all sweep.
 - `references/slop.md` — over-engineering tags, waste taxonomy, AI-slop tells for code and prose.
+- `references/duplication.md` — clone-scanner ladder (dupehound, jscpd), triage protocol, severity and remedy rules.
 - `references/verification.md` — claim restatement, devil's advocate, self-filter; applied in step 4.
 - `references/architecture.md` — deep/shallow modules, seams, adapters, deletion test, vocabulary.
 - `references/readability-naming.md` — naming conventions and readability patterns by language.
