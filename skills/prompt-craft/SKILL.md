@@ -20,6 +20,8 @@ Frontier models (GPT-5.6 Sol, Claude Fable 5.1, Claude Opus 5) follow prompt con
 - OpenAI GPT-5.6 (Sol, Terra, Luna), GPT-5.5, or GPT-5.4: read [references/openai-gpt-5.md](references/openai-gpt-5.md).
 - Claude Fable 5.1 / Claude Fable 5 / Claude Mythos 5.1: read [references/claude-fable-5.md](references/claude-fable-5.md).
 - Claude Opus 5 (flagship) or Claude Opus 4.8 / Claude Code: read [references/claude-opus-5.md](references/claude-opus-5.md).
+- Claude Sonnet 5 / Claude Sonnet 4.6: read [references/claude-fable-5.md](references/claude-fable-5.md) for universal Claude 5 behavior, or [references/claude-opus-5.md](references/claude-opus-5.md).
+- Claude Haiku 4.5 or lightweight Claude models: read [references/small-models.md](references/small-models.md) (note: Haiku 4.5 does not support the `effort` parameter).
 - Gemini 3 / Gemini 3.1 Pro: read [references/gemini-3.md](references/gemini-3.md).
 - Kimi / Kimi K2.6: read [references/kimi.md](references/kimi.md).
 - Qwen / Qwen3.6: read [references/qwen.md](references/qwen.md).
@@ -62,9 +64,8 @@ Use Markdown headings for ordinary structure. Use XML tags when separating instr
 - For long-running agents, define persistence, progress updates, compaction/state handoff, and escalation rules. Require progress claims to be audited against actual tool results: report only work with evidence, and state failures plainly.
 - State autonomy and approval boundaries once, in one place: what the request authorizes without asking (in-scope edits, non-destructive validation) and what requires confirmation (external writes, destructive actions, scope expansion). Repeating "ask first" across sections causes unnecessary approval pauses.
 - Tune reasoning and verbosity separately. Do not use long final answers as a proxy for deeper reasoning.
-- Ask for visible reasoning only when it is useful to the user. Otherwise ask for checks, conclusions, evidence, or a concise rationale. Never instruct a model to echo or transcribe its internal reasoning as response text; on models with summarized thinking (Claude Fable 5) this triggers refusals — read structured thinking output instead.
+- Ask for visible reasoning only when it is useful to the user. Otherwise ask for checks, conclusions, evidence, or a concise rationale. Never instruct a model to echo or transcribe its internal reasoning as response text; on current Claude models (Claude Fable 5.1, Claude Opus 5) this triggers `reasoning_extraction` refusals — read structured `thinking` blocks instead.
 - Add current dates, timezones, and policy-effective dates only when the task depends on them.
-
 ## Long Context
 
 - Put large source material before the task, then restate the task and critical constraints after the context.

@@ -6,13 +6,16 @@ Last verified: 2026-09-03
 
 Use this reference for Claude Opus 5 (flagship), Claude Opus 4.8, Claude Code on Opus, and Claude 4.x-to-5 migration. For Claude Fable 5.1, read [claude-fable-5.md](claude-fable-5.md).
 
-## Claude Opus 5
+---
+
+## Part 1: Claude Opus 5
 
 ### Capability & Behavior Shifts
 - **End-to-end agentic coding**: Strongest on difficult multi-file features, architectural refactors, and complete implementation runs. Completes full tasks without leaving stubs, placeholders, or premature stops. Give the full specification up front and let it execute.
 - **Code review & bug detection**: Reviews code with high precision and recall. Accurately flags real logic bugs rather than nitpicks, even at `low` or `medium` effort.
   - *Avoid restrictive filters*: Prompts like "only report high-severity bugs" or "be conservative" cause Opus 5 to follow instructions literally and withhold valid findings. Ask it to report all bugs and filter severity in a separate pass.
-- **Effort efficiency**: `low` and `medium` effort deliver high quality at a fraction of tokens and latency. Default is `high`; use `xhigh` for demanding coding and autonomous tasks, and `max` for the hardest frontier problems. For `xhigh`/`max` runs, configure large `max_tokens` budgets (e.g. 32k–64k) so the model has sufficient space for thinking and multi-step tool execution.
+- **Effort efficiency**: `low` and `medium` effort deliver high quality at a fraction of tokens and latency. Default is `high`; use `xhigh` for demanding coding and autonomous tasks, and `max` for the hardest frontier problems.
+  - *Budget sizing*: For `xhigh` and `max` runs, start at `max_tokens: 64000` and tune from there. `max_tokens` is the hard combined limit for both internal thinking and user-visible response text.
 - **1M token context window**: 1M default and maximum context window with consistent instruction following and retrieval throughout the window.
 - **Vision excellence**: Strong on charts, architecture diagrams, UI design, and visual verification. Provide tools to crop, zoom, and visually verify changes rather than relying on thinking alone.
 - **Office deliverables**: Generates multi-sheet spreadsheets with complex formulas and formatted slide decks.
@@ -58,7 +61,7 @@ Only correct an earlier statement when the error would change the user's code, c
 ```
 
 #### 7. Running with Thinking Disabled
-Thinking is on by default in Opus 5 and can only be disabled at effort `high` or lower. If disabled, tool calls may occasionally leak as plain text or emit internal XML tags. Mitigate with:
+Thinking is on by default in Opus 5 and can only be disabled at effort `high` or lower (`thinking: {"type": "disabled"}` with `xhigh`/`max` returns HTTP 400). If disabled, tool calls may occasionally leak as plain text or emit internal XML tags. Mitigate with:
 ```text
 When you use a tool, you may say a brief sentence first. If no tool can express what the user asked for, say so instead of guessing. Do not include internal or system XML tags in your response.
 ```
@@ -66,21 +69,46 @@ When you use a tool, you may say a brief sentence first. If no tool can express 
 
 ---
 
-## Claude Opus 4.8
+## Part 2: Migrating from Opus 4.8 to Opus 5
+
+Key architectural and SDK considerations when moving from 4.8 to 5:
+- **Thinking structure in API responses**: Opus 5 responses often begin with a `thinking` block. Never assume `content[0]` is text; inspect block `type` (`block.type === "text"`).
+- **Tool loop replay**: Replay `thinking` blocks in the assistant turn complete and unmodified in multi-turn conversations. Modifying or stripping them invalidates the conversation session.
+- **Token accounting**: Thinking tokens and output tokens share the same `max_tokens` ceiling and output billing rates.
+- **Behavioral inversions**:
+  - *Delegation*: Opus 4.8 under-delegated and needed prompts encouraging subagent fan-out; Opus 5 delegates readily and requires delegation caps.
+  - *Narration*: Opus 4.8 needed prompts to narrate progress on long traces; Opus 5 narrates actively by default and requires pacing constraints.
+
+---
+
+## Part 3: Claude Opus 4.8
+
+Use these model-specific patterns when targeting Opus 4.8 directly:
 
 - **Thinking activation**: Thinking is **off by default** in Opus 4.8 unless explicitly enabled via `thinking: { type: "adaptive" }`.
-- **Effort recommendations**: Start at `xhigh` for coding and agentic use; minimum `high` for intelligence-sensitive work.
+- **Effort recommendations**: Start at `xhigh` for coding and agentic use; minimum `high` for intelligence-sensitive work. `max` can help hard tasks but shows diminishing returns and can overthink.
+- **Output budget**: At `xhigh`/`max`, set a large max-output budget (start at 64k tokens).
+- **Subagent fan-out**: Unlike Opus 5, Opus 4.8 spawns fewer subagents by default. If fan-out is desirable, prompt explicitly: *"Spawn multiple subagents in the same turn when fanning out across independent items; do not spawn one for work you can complete directly."* Do not apply Opus 5's delegation suppression prompts to Opus 4.8.
+- **Progress updates**: Opus 4.8 provides well-calibrated updates on long traces out of the box. Remove old scaffolding that forces interim status messages.
+- **Autonomous coding**: Front-load intent, acceptance criteria, and relevant files in the first turn rather than drip-feeding across turns (token usage is higher in interactive multi-turn sessions).
 - **Sampling parameters**: Do not pass non-default `temperature`, `top_p`, or `top_k`; steer with prompt instructions and effort.
 - **Strict literalism**: Interprets prompts literally at low effort. Does not silently generalize instructions across files or sections without explicit scope ("apply this across all modules, not just the first").
 - **Tool calling vs. reasoning**: Favors internal reasoning over tool calls by default; raise effort (`high`/`xhigh`) to increase tool usage in agentic workflows.
-- **Review recall trap**: Instructions like "only report high-severity issues" or "be conservative" are followed strictly, filtering valid findings. For coverage-first review passes, prompt: *"Report every issue you find, including uncertain or low-severity ones. Do not filter for importance or confidence at this stage. Include confidence and estimated severity per finding for downstream ranking."*
-- **House visual style**: Defaults to warm cream backgrounds (`#F4F1EA`) and serif display type. Generic negations ("don't use cream") simply swap to another fixed palette; specify explicit color hexes and typography tokens for modern frontend deliverables.
+- **Review recall trap**: Instructions like "only report high-severity issues" or "be conservative" are followed strictly, filtering valid findings. Prompt for full recall: *"Report every issue you find, including uncertain or low-severity ones. Do not filter for importance or confidence at this stage. Include confidence and estimated severity per finding for downstream ranking."*
+- **House visual style**: Defaults to warm cream backgrounds (`#F4F1EA`) and serif display type. Specify explicit color hexes and typography tokens for modern frontend deliverables.
 - **Computer use**: Optimized for 1080p (balances accuracy and token cost) or 720p/1366x768 for cost-sensitive workloads (max resolution 2576px / 3.75MP).
 - **Prompt caching**: Keep stable system instructions at the beginning of the prompt; place volatile user context at the end.
 
+---
+
 ## Sources
 
+### Claude Opus 5
 - Prompting Claude Opus 5: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-5
 - What's new in Claude Opus 5: https://platform.claude.com/docs/en/models/opus-5/whats-new-opus-5
 - Migrating from Opus 4.8 to Opus 5: https://platform.claude.com/docs/en/models/opus-5/migration-guide
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
+
+### Claude Opus 4.8
+- Prompting Claude Opus 4.8: https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-opus-4-8
+- What's new in Claude Opus 4.8: https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8
