@@ -40,7 +40,7 @@ The `task` tool is OMP's delegation surface. It supports dispatching subagents i
 
 ### Task Parameters & Contracts
 - `context`: Shared string rendered into all child prompts in the batch.
-- `name`: Stable identifier for peer messaging (CamelCase, $\le 32$ chars).
+- `name`: Stable identifier for peer messaging (CamelCase, <= 32 chars).
 - `agent`: Agent type to spawn (omitting selects default `task` agent).
 - `effort`: Optional reasoning effort (`"lo" | "med" | "hi"`); requires `task.enableEffort: true`.
 - `isolated`: When `true`, runs the subagent in an isolated copy-on-write worktree.
@@ -49,15 +49,15 @@ The `task` tool is OMP's delegation surface. It supports dispatching subagents i
 
 ### Built-in Agent Types
 
-| Agent | Characteristics | Best For |
+| Agent | Characteristics & Tools | Best For |
 |---|---|---|
 | `task` | Full capabilities, editable tools, default worker. | Multi-step implementation, coding, test writing. |
-| `scout` | Read-only tools (`read`, `grep`, `glob`, `lsp`), runs **inline/blocking**. | Fast codebase exploration, architecture mapping. |
-| `reviewer` | Read-only analysis and code quality evaluation. | Standards compliance, spec verification, security audits. |
+| `scout` | Read-only tools (`read`, `grep`, `glob`, `web_search`), no `lsp`. Background spawn. | Fast codebase exploration, architecture mapping. |
+| `reviewer` | Read-only analysis and code quality evaluation. | Standards compliance, spec verification, code smells. |
+| `security-reviewer` | Read-only security audit with structured findings (CWE, severity, evidence). | Vulnerabilities, trust boundaries, secret exposure. |
 | `librarian` | Researches external libraries and APIs by reading source. | Definitive API contract verification. |
 | `sonic` | Low-reasoning agent for mechanical sweeps. | Bulk renames, lint fixes, mechanical boilerplate. |
-
-*(Note: The legacy `designer` agent was removed in v18.1.5).*
+| *(custom)* | Defined in `.omp/agents/*.md`. | Domain-specific workflows. |
 
 ## 2. Worktree Isolation
 
@@ -100,8 +100,15 @@ prewalk: openai/gpt-5.6-luna
 You are a database architect. Inspect migrations in `db/migrations` and enforce schema conventions.
 ```
 
+- `tools`: Comma-separated allowed tools (`read, grep, bash`, etc.).
 - `spawns`: Controls sub-delegation permissions (`"*"` for any, `""` for none, or comma-separated names).
-- `prewalk`: Model to swap into at the first edit (e.g. plan on strong model, implement on fast model).
+- `model`: One selector, comma-separated list, or array of models/aliases (`@smol`, `@task`) tried in order.
+- `thinking-level`: Default reasoning effort for this agent (`minimal`, `low`, `medium`, `high`, `xhigh`, `max`).
+- `output`: JSON Schema string/object for structured output enforcement.
+- `blocking`: Set `true` to force parent agent to wait for this subagent inline, even when async execution is enabled.
+- `advisor`: Set `true` or specify model to pair this subagent with its own shadow advisor.
+- `read-summarize`: Set `false` to force verbatim `read` results instead of structural AST summaries.
+- `prewalk`: Model to swap into at first edit (e.g. plan on strong model, implement on fast model).
 
 ## 4. The Unified `hub` Surface
 
@@ -111,52 +118,57 @@ The `hub` tool consolidates peer messaging, background jobs, and project process
 
 Subagents that complete their tasks enter `idle` state; after `task.agentIdleTtlMs` (default 7 minutes), they transition to `parked`.
 
-```bash
-# List all live, idle, and parked peers
-hub op="list"
+```json
+// List running + idle peers, plus running/idle/parked/shown/truncated counts
+hub({ op: "list" })
 
-# Send a fire-and-forget message (wakes idle/parked agents)
-hub op="send" to="AuthScout" message="Did you find any refresh token race conditions?"
+// Enumerate parked peer IDs (parked archaeology)
+hub({ op: "list", status: "parked", limit: 32 })
 
-# Send a message and wait for recipient's reply
-hub op="send" to="AuthScout" message="Check line 42 of auth.ts" await=true
+// Send a fire-and-forget message (wakes idle or parked agents)
+hub({ op: "send", to: "AuthScout", message: "Did you find any refresh token race conditions?" })
 
-# Wait for the next incoming peer message or background job completion
-hub op="wait" timeoutMs=60000
+// Send a message and wait for recipient's reply
+hub({ op: "send", to: "AuthScout", message: "Check line 42 of auth.ts", await: true })
 
-# Drain queued messages from inbox
-hub op="inbox"
+// Wait for the next incoming peer message or background job completion
+hub({ op: "wait", timeoutMs: 60000 })
+
+// Drain queued messages from inbox
+hub({ op: "inbox" })
 ```
+
+*Notes on peer IDs:* IDs must be taken verbatim from the roster. `history://<id>` and `agent://<id>` remain readable for parked agents without needing to revive them.
 
 ### Process Supervision (`hub start`)
 
 Run and monitor long-running services, test watchers, debuggers, or REPLs shared across the workspace:
 
-```bash
-# Start a dev server with readiness criteria
-hub op="start" name="web" application="bun" args=["run", "dev"] ready='{"port": 3000, "log": "Ready on http", "timeout": 30}'
+```json
+// Start a dev server with readiness criteria
+hub({ op: "start", name: "web", application: "bun", args: ["run", "dev"], ready: { port: 3000, log: "Ready on http", timeout: 30 } })
 
-# Inspect live process status across the project
-hub op="ps"
+// Inspect live process status across the project
+hub({ op: "ps" })
 
-# Read recent logs
-hub op="logs" name="web" lines=50 follow=true
+// Read recent logs
+hub({ op: "logs", name: "web", lines: 50, follow: true })
 
-# Send input to process stdin
-hub op="send" name="web" text="rs" enter=true
+// Send input to process stdin
+hub({ op: "send", name: "web", text: "rs", enter: true })
 
-# Stop a supervised process tree gracefully
-hub op="stop" name="web" timeout=5
+// Stop a supervised process tree gracefully
+hub({ op: "stop", name: "web", timeout: 5 })
 ```
 
 ### Background Job Control
 
-```bash
-# Snapshot all running and recently settled jobs
-hub op="jobs"
+```json
+// Snapshot all running and recently settled jobs
+hub({ op: "jobs" })
 
-# Cancel a hung or unnecessary background job
-hub op="cancel" ids=["bash_3f8a1"]
+// Cancel a hung or unnecessary background job
+hub({ op: "cancel", ids: ["bash_3f8a1"] })
 ```
 
 ## 5. Subagent Tuning Settings
@@ -167,6 +179,8 @@ hub op="cancel" ids=["bash_3f8a1"]
 | `task.maxRecursionDepth` | `2` | Nesting depth limit for subagents spawning child subagents. |
 | `task.maxRuntimeMs` | `0` | Wall-clock execution timeout per spawn (`0` = disabled). |
 | `task.agentIdleTtlMs` | `420_000` | Idle time (ms) before an idle subagent is parked (7 mins). |
-| `task.prewalk` | `false` | Enable Prewalk handoff on the generic `task` agent. |
 | `task.agentPrewalk` | `{}` | Record of per-agent prewalk overrides (`{"AgentName": "on"}`). |
+| `task.agentAdvisor` | `{}` | Record of per-agent advisor pairings (`{"AgentName": "anthropic/claude-fable-5-1"}`). |
 | `task.agentModelOverrides` | `{}` | Record of per-agent model overrides (`{"AgentName": "provider/model"}`). |
+
+Authoritative upstream docs: `read("omp://task-agent-discovery.md")`, `read("omp://agent-hub.md")`, and `read("omp://tools/hub.md")`.

@@ -45,14 +45,20 @@ omp --plan-yolo --plan-yolo-into openai/gpt-5.6-luna
 OMP scans user prompt prose for standalone keywords at turn start (Unicode word boundaries; code spans and markdown fences ignored). When detected, OMP raises thinking effort or injects special turn directives:
 
 | Keyword | Single-Turn Effect |
-|---|---|
-| `ultrathink` | Raises thinking/reasoning effort to maximum (`max` / `xhigh`) for this turn only. |
+| `ultrathink` | Injects careful multi-step reasoning prompt. **When automatic thinking is active**, also raises thinking effort to maximum (`max` / `xhigh`) for this turn only. |
 | `orchestrate` | Turns the current turn into an orchestrator: enforces task decomposition, dispatches parallel subagents via `task`, and forbids early yield. |
 | `workflowz` | Instructs the model to author a deterministic multi-agent pipeline using `eval` runtime primitives (`parallel`, `pipeline`, `agent`, `completion`). |
 
-*Escaping Keywords:* Wrap the word in backticks (e.g. `` `orchestrate` ``) to mention it without triggering the keyword directive.
-*Master Switch:* Disable via `omp config set magicKeywords.enabled false`.
+*Keyword Detection & Escaping:*
+- OMP evaluates prompt text for standalone keyword tokens (case-sensitive lowercase; `Orchestrate` does not trigger).
+- Attached or suffixed forms (`orchestrated`, `orchestrate.ts`, `orchestrate()`), code spans, markdown code fences, and HTML/XML tags do not trigger.
+- To mention a keyword safely in instructions, wrap it in backticks: `` `orchestrate` ``.
 
+*Switches:*
+- Master toggle: `omp config set magicKeywords.enabled false` (default: `true`)
+- Per-keyword toggles: `magicKeywords.ultrathink`, `magicKeywords.orchestrate`, `magicKeywords.workflow` (note: `workflow`, not `workflowz`; all default `true`).
+
+Authoritative upstream docs: `read("omp://magic-keywords.md")`, `read("omp://approval-mode.md")`, and `read("omp://prewalk.md")`.
 ## 3. Approval Modes and Security Guardrails
 
 OMP provides granular control over tool execution safety:

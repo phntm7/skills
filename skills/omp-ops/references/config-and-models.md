@@ -11,10 +11,8 @@ Use this reference to inspect, edit, or troubleshoot Oh My Pi (`omp`) settings, 
 | **Project Settings** | `<cwd>/.omp/config.yml` | Project-scoped overrides. Loaded only when `<cwd>/.omp/` exists and is non-empty. Edit directly for project scope. |
 | **Config Overlays** | `--config <path>` | Process-local overlay file; repeatable; beats project and global settings. |
 | **CLI Runtime Flags** | e.g. `--approval-mode`, `--api-key` | In-memory flags for this invocation only; highest precedence. |
-
 **Effective Precedence (Lowest to Highest):**
-$$\text{Built-in Defaults} \to \text{Global Config} \to \text{Project Config} \to \text{--config Overlays} \to \text{CLI Runtime Overrides}$$
-
+Built-in Defaults -> Global Config -> Project Config -> --config Overlays -> CLI Runtime Overrides
 *Note on settings arrays:* Arrays replace wholesale at higher-precedence layers; they do not merge.
 
 ## 2. Credential Resolution Order
@@ -62,7 +60,7 @@ providers:
 | Field | Meaning & Constraints |
 |---|---|
 | `baseUrl` | Endpoint root URL. Required for custom providers with non-empty `models`. |
-| `api` | API adapter. Allowed values: `openai-completions`, `openai-responses`, `openai-codex-responses`, `azure-openai-responses`, `anthropic-messages`, `google-generative-ai`, `google-gemini-cli`, `google-vertex`. Use `openai-completions` for OpenAI-compatible chat endpoints. |
+| `api` | API adapter. Allowed values: `openai-completions`, `openai-responses`, `openai-codex-responses`, `azure-openai-responses`, `anthropic-messages`, `bedrock-converse-stream`, `google-generative-ai`, `google-gemini-cli`, `google-vertex`. Use `openai-completions` for OpenAI-compatible chat endpoints. |
 | `apiKey` | Environment variable name, literal secret, or `!command <secret-command>`. Prefer env var names or trusted command references. |
 | `auth` | `apiKey` (default), `none`, or `oauth`. Modern OMP permits `auth: oauth` without requiring a dummy `apiKey`. |
 | `authHeader` | When `true`, OMP sends `Authorization: Bearer <resolved-key>`. Common for OpenAI-compatible proxies. |
@@ -86,7 +84,7 @@ OMP uses role aliases to decouple workflows from concrete models. The built-in r
 | `commit` | Generating git commit messages and atomic PR diff analysis. | Set via `modelRoles.commit`. |
 | `tiny` | Titles, memory indexing, stop checks, and auto-thinking classification. | Falls back to `smol`. |
 | `task` | Default model for spawned `task` subagents. | Inherits parent session model if unset. |
-| `advisor` | Shadow watchdog reviewing turns in the background. | Set via `advisor.model`. |
+| `advisor` | Shadow watchdog reviewing turns in the background. | Set via `modelRoles.advisor`. Tuned via `advisor.enabled`, `advisor.syncBacklog`, `advisor.immuneTurns`. |
 
 *(Note: The legacy `designer` role was removed in v18.1.5).*
 

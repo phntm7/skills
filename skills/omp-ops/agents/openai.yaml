@@ -1,4 +1,4 @@
 interface:
   display_name: "OMP Ops"
   short_description: "Operate Oh My Pi (omp): config, providers, credentials, headless runs, subagents, hub, and internal URLs."
-  default_prompt: "Use $omp-ops to configure Oh My Pi, manage model providers and credentials, run headless or non-interactive sessions, coordinate subagents and hub processes, or resolve internal URLs."
+  default_prompt: "Use $omp-ops to configure a custom model provider in models.yml and verify it with omp models."

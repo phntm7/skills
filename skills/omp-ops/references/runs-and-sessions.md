@@ -93,15 +93,13 @@ All tools (`read`, `grep`, `glob`, `lsp`, `edit`) operate across all attached wo
 
 As conversations grow, OMP manages token limits via layered compaction strategies:
 
-### Zero-Cost Pruning: `/shake`
-- `/shake` or `/shake elide`: Replaces bulky historical tool output blocks with `artifact://<id>` references without making any LLM call. Tool results remain recoverable if needed, but active token count drops dramatically.
-- `/shake images`: Strips image blocks to free vision token overhead.
+### Automatic Ladder (`compaction.methodOrder`)
+OMP manages context overflow through an ordered fallback ladder configured by `compaction.methodOrder` (default: `["handoff", "remote", "soft"]`). If a method fails or is unavailable, OMP advances to the next:
 
-### In-Place Compaction: `/handoff`
-- `/handoff [focus instructions]`: Writes an in-place handoff document and commits it into the active session file as a compaction entry. Retains prompt cache and session identity (does not fork into a new file).
+1. `handoff`: In-place handoff document committed directly into the session (retains prompt cache).
+2. `remote`: Provider-native server-side compaction (e.g. OpenAI `/responses/compact`).
+3. `soft`: Local conversational summarization using the active model.
+4. `shake`: Strips historical tool outputs and replaces them with `artifact://` pointers (zero LLM token cost).
+5. `snapcompact`: Serializes conversation turns onto dense bitmap images read back by vision models. **Requires a vision-capable model**; hard-fails on text-only models.
 
-### Compaction Modes
-Configured via `compaction.strategy` or manual `/compact <mode> [focus]`:
-- `remote`: Uses provider-native compaction endpoints (e.g. OpenAI `/responses/compact`).
-- `soft`: Local summarization using the active model.
-- `snapcompact`: Serializes conversation history onto dense bitmap images read by vision-capable models (zero LLM summarization tokens).
+Manual overrides: `/compact <mode> [focus]`, `/shake [elide|images]`, and `/handoff [focus instructions]`.

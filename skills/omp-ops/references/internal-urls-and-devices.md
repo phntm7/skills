@@ -49,7 +49,7 @@ Shared scratchpad space accessible by the main agent and all child subagents:
 local://                List all files in the session scratch root
 local://<filename>      Read file in session scratchpad
 ```
-*Notes:* Writable via `write(path="local://plan.md", content="...")`. Survives across turns and subagent hops. Limited to UTF-8 text $\le 1$ MiB.
+*Notes:* Writable via `write(path="local://plan.md", content="...")`. Survives across turns and subagent hops. Limited to UTF-8 text <= 1 MiB.
 
 ## 3. GitHub and External Integration URIs
 
@@ -81,7 +81,7 @@ Direct remote file operations through configured SSH ControlMaster connections:
 ssh://                  List configured SSH hosts (from ~/.ssh/config or ssh.json)
 ssh://<host>/<path>     Read remote file or directory listing
 ```
-*Notes:* Writable with `write(path="ssh://prod-server/etc/nginx.conf", content="...")`. Paths must be absolute. Percent-encode special characters (`%3A`, `%3F`, `%23`). UTF-8 text $\le 1$ MiB.
+*Notes:* Writable with `write(path="ssh://prod-server/etc/nginx.conf", content="...")`. Paths must be absolute. Percent-encode special characters (`%3A`, `%3F`, `%23`). UTF-8 text <= 1 MiB.
 
 ### `vault://` — Obsidian Vault Notes (Writable)
 Direct access to Obsidian notes via the Obsidian CLI (requires `vault.enabled: true`):
@@ -94,6 +94,14 @@ vault://<vault>/<path>?op=outline|backlinks|links|tags|tasks
 vault://<vault>?op=search&q=<query>
 ```
 *Notes:* Plain note paths accept writes via `write`.
+### `omp://` — Bundled First-Party Documentation
+OMP ships 130 offline, version-matched documentation files readable directly via `read`:
+
+```
+omp://                  Index listing all 130 available documentation files
+omp://<topic>.md        Read specific topic document (.md suffix required)
+```
+*Key topics:* `omp://approval-mode.md`, `omp://prewalk.md`, `omp://magic-keywords.md`, `omp://models.md`, `omp://providers.md`, `omp://secrets.md`, `omp://task-agent-discovery.md`, `omp://agent-hub.md`, `omp://compaction.md`.
 
 ### `memory://` — Long-Term Memory
 ```
@@ -107,18 +115,20 @@ memory://<memory-id>    Reads raw Mnemopi memory record with frontmatter
 OMP mounts complex tools and external capabilities as virtual device paths (governed by `tools.xdev: true`).
 
 ### The Virtual Device Contract
-1. **Discover Schema**: Call `read(path="xd://<device>")` to inspect the tool's description and JSON Schema.
-2. **Execute Operation**: Call `write(path="xd://<device>", content="<json-args>")` to invoke the device.
-3. If arguments are invalid, the device returns an error containing the schema so the model can correct and retry.
+1. **Discover Schema**: Always call `read(path="xd://<device>")` first to inspect the tool's description and JSON Schema before calling.
+2. **Execute Operation**: Call `write(path="xd://<device>", content="<args>")` to invoke the device.
+   - Most tools take a JSON arguments string.
+   - Plan-mode devices (`propose`, `resolve`, `reject`) take **plain text** strings.
 
 ### Core Virtual Devices
 
-| Virtual Device | Capability | Example Invocation |
-|---|---|---|
-| `xd://ast_edit` | Structural AST-aware codemods via ast-grep. | `write("xd://ast_edit", '{"paths":["src/"],"ops":[{"pat":"$A == null","out":"!$A"}]}')` |
-| `xd://github` | GitHub CLI operations (PR create, checkout, search, Actions watch). | `write("xd://github", '{"op":"pr_checkout","pr":"123"}')` |
-| `xd://lsp` | Language server symbols, definitions, diagnostics, renames. | `write("xd://lsp", '{"action":"definition","file":"src/app.ts","line":25,"symbol":"run"}')` |
-| `xd://browser` | Full Chromium automation and DevTools Protocol interaction. | `write("xd://browser", '{"action":"open","url":"http://localhost:3000"}')` |
-| `xd://security_scan` | OMP-native repository security scanning and SARIF export. | `write("xd://security_scan", '{"action":"preflight","target_kind":"working_tree"}')` |
-| `xd://propose` | Propose plan steps for preview in plan mode. | `write("xd://propose", '{"proposal":"..."}')` |
-| `xd://resolve` | Approve proposed plan changes (replaces legacy `resolve` tool). | `write("xd://resolve", '{"action":"approve"}')` |
+| Virtual Device | Capability | Input Shape | Example Invocation |
+|---|---|---|---|
+| `xd://ast_edit` | Structural AST-aware codemods via ast-grep. | JSON object | `write("xd://ast_edit", '{"paths":["src/"],"ops":[{"pat":"$A == null","out":"!$A"}]}')` |
+| `xd://github` | GitHub CLI operations (PR create, checkout, search, Actions watch). | JSON object | `write("xd://github", '{"op":"pr_checkout","pr":"123"}')` |
+| `xd://lsp` | Language server symbols, definitions, diagnostics, renames. | JSON object | `write("xd://lsp", '{"action":"definition","file":"src/app.ts","line":25,"symbol":"run"}')` |
+| `xd://browser` | Full Chromium automation and DevTools Protocol interaction. | JSON object | `write("xd://browser", '{"action":"open","url":"http://localhost:3000"}')` |
+| `xd://security_scan` | OMP-native repository security scanning and SARIF export. | JSON object | `write("xd://security_scan", '{"action":"preflight","target_kind":"working_tree"}')` |
+| `xd://propose` | Propose plan slug to request approval in plan mode. | **Plain text** plan slug | `write("xd://propose", "auth-refactor")` |
+| `xd://resolve` | Finalize and apply proposed plan changes. | **Plain text** reason | `write("xd://resolve", "Plan addresses all review requirements")` |
+| `xd://reject` | Discard proposed plan changes and continue planning. | **Plain text** reason | `write("xd://reject", "Missing test migration step")` |
