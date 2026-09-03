@@ -59,12 +59,18 @@ OMP provides granular control over tool execution safety:
 
 ### Approval Modes (`--approval-mode <mode>`)
 
-| Mode | Behavior |
-|---|---|
-| `always-ask` | Every tool execution prompts the user for approval. Safe default for untrusted or external scripts. |
-| `write` | Read-only inspection tools run freely (`read`, `grep`, `glob`, `lsp`); modifying tools (`edit`, `write`, `bash`) require approval. |
-| `yolo` / `--yolo` | Auto-approves all tool executions without interactive prompts. |
+OMP classifies tools into three capability tiers:
+- **`read`**: Reads files or workspace state (`read`, `grep`, `glob`, `lsp`).
+- **`write`**: Mutates files or workspace state without running arbitrary code (`edit`, `write`).
+- **`exec`**: Executes code, commands, browser actions, or spawns agents (`bash`, `eval`, `computer`, `browser`, `task`). Undeclared tools default to `exec`.
 
+| Mode | Auto-Approves | Prompts For | Notes |
+|---|---|---|---|
+| `yolo` | `read`, `write`, `exec` | *(None)* | **Default mode**. Auto-approves all tool calls without prompting. Forced by `--yolo` or `--auto-approve`. |
+| `write` | `read`, `write` | `exec` | Allows file inspection and edits unattended; prompts before shell/exec/subagent calls. |
+| `always-ask` | `read` | `write`, `exec` | Auto-approves safe reads; prompts before file mutations or execution. Recommended for delegated/untrusted automation. |
+
+*Important:* `tools.approvalMode` defaults to `yolo`. In unattended scripts (`omp -p`), always pass `--approval-mode always-ask` or `--approval-mode write` if you intend to restrict execution.
 ### Per-Tool Approval Policies (`config.yml`)
 Per-tool settings override the global approval mode:
 ```yaml

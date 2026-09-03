@@ -114,9 +114,8 @@ omp models find sonnet
 # Rebuild the local model cache database (~/.omp/models.db)
 omp models refresh
 
-# Show coalesced canonical model names
-omp models canonical --json
-
+# Machine-readable catalog output (JSON)
+omp models --json
 # Benchmark generation throughput (tokens/s) and time-to-first-token (TTFT)
 omp bench opus sonnet --runs 5
 omp bench openai/gpt-5.6 --cache --json
