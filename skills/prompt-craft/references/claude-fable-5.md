@@ -4,7 +4,7 @@ Last verified: 2026-09-03
 
 ## Scope
 
-Use this reference for Claude Fable 5.1, Claude Fable 5, and Claude Mythos 5.1/5. For Claude Opus 4.8 or Claude Code, read [claude-opus-4.8.md](claude-opus-4.8.md).
+Use this reference for Claude Fable 5.1, Claude Fable 5, and Claude Mythos 5.1/5. For Claude Opus 5 or Claude Opus 4.8, read [claude-opus-5.md](claude-opus-5.md).
 
 ## Fable 5.1 Behavior & What Changed
 
