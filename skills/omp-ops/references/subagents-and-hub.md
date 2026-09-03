@@ -67,7 +67,7 @@ When subagents perform risky changes or work on overlapping files in parallel, `
 
 | Setting Key | Type | Default | Description |
 |---|---|---|---|
-| `task.isolation.enabled` | boolean | `true` | Master toggle for worktree isolation. |
+| `task.isolation.enabled` | boolean | `false` | Master toggle for worktree isolation (`false` by default in pristine schema). |
 | `isolation.backend` | enum | `auto` | Backend: `auto`, `apfs`, `btrfs`, `zfs`, `reflink`, `overlayfs`, `projfs`, `block-clone`, `rcopy`, or `worktree`. |
 | `task.isolation.merge` | enum | `patch` | Result return mechanism: `patch` (diff captured as patch) or `branch` (committed to `omp/task/<id>` branch). |
 
