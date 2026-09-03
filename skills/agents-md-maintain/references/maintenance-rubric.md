@@ -20,7 +20,7 @@ Score audits on a 100-point scale:
 
 | Criterion | Points | Full credit |
 | --- | ---: | --- |
-| Commands/workflows | 20 | Essential build, test, lint, deploy, and common workflow commands are documented with context |
+| Commands/workflows | 20 | Build, test, lint, deploy, and workflow commands the agent cannot infer from manifests are documented with when to run them; lookups the environment answers are pointed at, not copied |
 | Architecture clarity | 20 | Key directories, module relationships, entry points, and relevant data flow are clear |
 | Non-obvious patterns | 15 | Gotchas, quirks, workarounds, edge cases, and unusual "why" decisions are captured |
 | Conciseness | 15 | Dense, valuable content with no filler, duplicated rules, or obvious restatements |
@@ -79,7 +79,15 @@ Remove or rewrite:
 - API keys, credentials, connection strings, or vulnerability details — the
   file is repo-shipped, prompt-injected material and must be treated as
   potentially public;
-- model-specific advice mixed into universal project policy without a reason.
+- model-specific advice mixed into universal project policy without a reason;
+- no-ops: lines the model already obeys by default (model-relative; settle by
+  running the file, and delete the whole line);
+- restated environment facts (`package.json` script lists, config values,
+  `--help` output) that a one-file lookup answers and that go stale in a copy;
+- bare links to docs with no statement of when to read them; rewrite as a
+  pointer ("read X before Y");
+- vague verification gates ("run tests"); rewrite as checkable and exhaustive
+  ("every touched package's tests pass").
 
 Preserve:
 

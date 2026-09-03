@@ -28,6 +28,7 @@ The safest shared baseline is:
 - Project skills live under `.claude/skills`.
 - Plugin skills live under `skills/` inside a Claude plugin root and are invoked with the plugin namespace.
 - Claude supports additional fields such as `allowed-tools`, `disable-model-invocation`, `user-invocable`, `context`, `agent`, hooks, and model/effort controls. Add these only when the skill intentionally needs Claude behavior.
+- `disable-model-invocation: true` makes the skill user-invoked: the agent and other skills cannot reach it, only `/skill-name` does. Codex's equivalent is `policy.allow_implicit_invocation: false` in `agents/openai.yaml`; `$skill-name` still works. Set both when a skill should pay no context load.
 
 ## OpenCode
 

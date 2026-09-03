@@ -84,7 +84,11 @@ system prompt, so prompting guidance applies.
      `Known Gotchas` only when they contain project-specific guidance.
    - Use exact commands from the repo, with short explanations of when to run
      them. Mark commands as required, preferred, expensive, or optional when
-     that distinction matters.
+     that distinction matters. The file is a cache of the environment: restate
+     what is expensive to look up or impossible to infer (the focused test
+     command, required env, the unwritten convention, the reason behind a
+     choice) and point at `package.json`, `Makefile`, or `--help` for the
+     rest, where it cannot go stale.
    - Document durable project-specific behavior, not one-off task notes or
      generic advice every coding agent should already know.
    - Put universal instructions first. Add `AGENTS.md`-specific or
@@ -141,7 +145,9 @@ system prompt, so prompting guidance applies.
   rules. Give a one-line reason for unusual constraints.
 - State autonomy boundaries once: what agents may do without asking and what
   requires confirmation. Do not scatter "ask first" across sections.
-- Include success criteria and verification gates for common workflows.
+- Include success criteria and verification gates for common workflows. Make
+  the gate checkable and exhaustive: "before declaring done, every touched
+  package's tests pass" drives more legwork than "run tests".
 - If a rule must run at a fixed lifecycle point, document or create a hook
   instead of relying only on an instruction file.
 - For task-specific procedures that do not need to load every session, create a
@@ -151,7 +157,12 @@ system prompt, so prompting guidance applies.
 - Avoid instructions that conflict with host-agent system messages, sandbox
   rules, approval policies, or tool availability.
 - Do not copy large sections from `README.md`; link or summarize only what an
-  agent needs during code work.
+  agent needs during code work. A linked doc is a context pointer: say what it
+  is and when to read it ("read `docs/routing.md` before changing model
+  roles"), since the wording decides whether the agent ever reaches it.
+- Delete no-ops: a line the agent already obeys by default spends context to
+  change nothing. The test is model-relative; settle it by running, not by
+  debate, and delete the whole line when it fails.
 - Never include API keys, credentials, connection strings, or vulnerability
   details; the file ships with the repo and enters every prompt.
 

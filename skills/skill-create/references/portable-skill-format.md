@@ -63,7 +63,9 @@ Design for three loading levels:
 2. `SKILL.md` for core operating instructions.
 3. `references/`, `scripts/`, and `assets/` only when the task needs them.
 
-Keep `SKILL.md` under 500 lines and roughly 5000 tokens where possible. Keep file references one level deep from `SKILL.md`; if it grows, move variant-specific detail into directly linked references.
+Decide where each piece sits by branching: inline what every run needs, disclose behind a link what only some branches reach. Push too little down and `SKILL.md` sprawls; push too much and the agent misses material it needs on every run. Keep `SKILL.md` under 500 lines and roughly 5000 tokens where possible. Keep file references one level deep from `SKILL.md`; if it grows, move variant-specific detail into directly linked references.
+
+Model invocation is a fourth level above discovery: a description the agent can match is loaded on every turn, so a skill only ever invoked by name should opt out of implicit invocation (see platform notes) and carry a one-line human-facing description instead of trigger branches.
 
 ## Resources
 

@@ -140,7 +140,18 @@ Use this compact format:
 - Remove generic prompt boilerplate, motivational language, duplicated rules,
   stale command lists, large README copies, and scaffolding written for older
   models (forced status updates, repeated approval-seeking, step lists for
-  behavior current models perform reliably).
+  behavior current models perform reliably). Without this discipline the file
+  turns to sediment: stale layers that settle because adding feels safe and
+  removing feels risky.
+- Delete no-ops: a line the agent already obeys by default spends context to
+  change nothing. The test is model-relative; settle it by running, not by
+  debate, and delete the whole line when it fails.
+- Keep the file a cache of what the agent cannot look up: the unwritten
+  convention, the reason behind a choice, the gotcha no config confesses.
+  Restated `package.json` scripts, config values, and `--help` output go
+  stale; point at the source instead.
+- Treat a linked doc as a context pointer: state what it is and when to read
+  it, since the wording decides whether the agent ever reaches it.
 - Keep autonomy boundaries in one place: what agents may do without asking
   and what requires confirmation.
 - Do not ask agents for hidden chain-of-thought or to echo internal

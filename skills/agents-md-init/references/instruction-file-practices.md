@@ -102,6 +102,22 @@ like:
 - Remove scaffolding written for older models — forced interim status updates,
   step-by-step procedures for behavior the model performs reliably, long lists
   of prohibitions. Trim one group at a time and re-check behavior.
+- Delete no-ops: a line the model already obeys by default changes nothing and
+  still spends context. The test is model-relative; settle it by running the
+  file, not by debate, and delete the whole line when it fails.
+- Prompt the positive. A prohibition drags the banned behavior into context;
+  state the target behavior instead, and keep a prohibition only as a hard
+  guardrail paired with the positive target.
+- Make verification gates checkable and exhaustive. "Every touched package's
+  tests pass" drives more legwork than "run tests"; a vague bound invites the
+  agent to declare done early.
+- Write linked docs as context pointers: what the doc is and the case that
+  should trigger reading it. The wording, not the target, decides whether the
+  agent reaches it; a must-read doc behind a bare link is a variance bug.
+- Cache the environment only where the lookup is expensive. Restated
+  `package.json` scripts and config values go stale; the unwritten convention,
+  the reason behind a choice, and the gotcha no config confesses cannot be
+  looked up and belong in the file.
 
 ## Quality Rubric
 
@@ -109,7 +125,7 @@ Score candidate files against these dimensions:
 
 | Criterion | Weight | Check |
 | --- | --- | --- |
-| Commands/workflows | High | Are exact build/test/lint/dev commands present? |
+| Commands/workflows | High | Are the build/test/lint/dev commands the agent cannot infer from manifests present, with when to run them? |
 | Architecture clarity | High | Can the agent locate key modules and entry points? |
 | Non-obvious patterns | Medium | Are gotchas and "why this way" rules captured? |
 | Conciseness | Medium | Is every section useful and non-redundant? |

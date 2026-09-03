@@ -48,7 +48,8 @@ Use Markdown headings for ordinary structure. Use XML tags when separating instr
 ## Prompting Principles
 
 - State the desired outcome before process details. Add step-by-step procedure only when the path matters.
-- Define "done": success criteria, acceptance checks, and when to stop, ask, retry, or abstain.
+- Define "done" with a completion criterion that is both checkable and demanding. Clarity lets the model tell done from not-done; a vague bound ("understanding reached") invites premature completion when later steps are visible. Demand drives legwork: "every modified model accounted for" forces thorough work where "produce a change list" does not. If a step is still rushed after the bound is sharpened, hide the later steps across a real context boundary (a subagent dispatch); an inline "do X then Y" leaves Y in view.
+- Say when to stop, ask, retry, or abstain.
 - Reserve absolute language (ALWAYS, NEVER, must, only) for true invariants such as safety rules, required fields, and prohibited actions. For judgment calls — when to search, ask, iterate, or delegate — give decision rules instead.
 - Give the reason behind the request, not only the request. Intent context ("I'm working on X for Y; they need Z") lets the model connect the task to relevant information instead of inferring intent.
 - Explain important constraints. A short reason helps the model generalize the rule to cases you did not enumerate.
@@ -56,7 +57,9 @@ Use Markdown headings for ordinary structure. Use XML tags when separating instr
 - Give each block one job. Do not mix persona, task instructions, output schema, and safety rules in one paragraph.
 - Put critical restrictions close to the task or final instruction so they are less likely to be dropped.
 - Separate data from instructions. Label user-provided content as context, source material, examples, or tool output.
-- Prefer positive instructions and examples over long lists of prohibitions.
+- Prompt the positive. A prohibition drags the banned behavior into context and makes it more available, not less; state the target behavior ("write one-line comments") so the banned one is never spoken. Keep a prohibition only as a hard guardrail you cannot phrase positively, and pair it with the positive target.
+- Use leading words: a compact concept the model already holds (*tight* loop, *red* test, *relentless*) used as a token, not a sentence. It anchors a whole region of behavior in one word and, when the same word appears in prompts, docs, and code, makes the agent reach the linked material reliably. Collapse restatements ("fast, deterministic, low-overhead") into the word ("tight"). Prefer an existing word; a coined one recruits no priors and costs its definition.
+- Co-locate: keep a concept's definition, rules, and caveats under one heading. Scattering one meaning across sections is a separate failure from duplicating it, and both cost the same.
 - Include enough context to remove ambiguity, but remove stale scaffolding, duplicate rules, and motivational filler.
 - Use examples for formats, tone, tool routing, refusal/abstention behavior, and edge cases.
 - For grounded work, state which sources are authoritative and what to do when the answer is not present.
@@ -145,6 +148,9 @@ Before finalizing a prompt, check:
 - Tool rules state when to use tools, side effects, retry boundaries, and stopping criteria.
 - Autonomy rules say when to proceed, ask, escalate, or stop.
 - Reasoning, verbosity, and model/API controls are set intentionally.
+- The done criterion is checkable and exhaustive.
+- Each sentence changes behavior versus the model's default; every no-op is deleted.
+- Restated ideas are collapsed into a leading word.
 - The prompt is as short as it can be while preserving behavior.
 
 ## AGENTS.md, CLAUDE.md, and Skill Files
@@ -162,6 +168,8 @@ For repository or agent instruction files:
 - Phrase validation concretely: "before declaring done, run `pnpm test:unit`" is better than "always be careful."
 - Use local project instructions to override global habits only where the repo truly differs.
 - Keep model-specific guidance in linked reference sections or comments rather than mixing it into universal repo policy.
+- Treat every "read X" line as a context pointer: its wording, not its target, decides whether the agent reaches the material. State what the material is and the branch that should trigger reading it ("read `docs/routing.md` before changing model roles"), not a bare link.
+- Cache the environment only when the lookup is expensive. A document that restates `package.json` scripts, config values, or `--help` output is a copy that goes stale; cache what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses.
 - For skills, make `description` trigger-focused and keep detailed model notes in `references/`.
 
 ## Anti-Patterns
@@ -178,6 +186,9 @@ For repository or agent instruction files:
 - Mixing model-specific parameter advice into a universal prompt.
 - Carrying prescriptive scaffolding written for older models into a prompt for a newer one without re-testing a leaner baseline first.
 - Forcing interim status updates or approval requests that the model already handles well by default.
+- A no-op instruction: a sentence the model already obeys by default spends tokens to change nothing. Delete the whole sentence, not words from it.
+- A weak leading word ("be thorough") that cannot beat the model's default; the fix is a stronger word ("relentless"), not a longer sentence.
+- A must-read document behind a weakly worded pointer. Sharpen the pointer's wording first; inline the material only if that fails.
 
 ## Output Modes
 
