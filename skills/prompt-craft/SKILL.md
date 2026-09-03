@@ -13,12 +13,12 @@ Use this skill to write prompts that are clear, testable, and portable across mo
 
 Prompting is context engineering: choose the smallest set of high-signal tokens that makes the desired behavior likely. Every section must earn its place. Start minimal, add instructions only for observed failure modes, and keep stable reusable content before dynamic task-specific context when caching matters.
 
-Frontier models (GPT-5.6 Sol, Claude Fable 5, Claude Opus 4.8) follow prompt contracts closely: contradictory or redundant rules destabilize them more than missing detail, and a brief instruction steers a whole behavior class without enumerating each case. When migrating a working prompt to a newer model, simplify first — remove one group of instructions, examples, or tools at a time and re-test — before adding anything new.
+Frontier models (GPT-5.6 Sol, Claude Fable 5.1, Claude Opus 4.8) follow prompt contracts closely: contradictory or redundant rules destabilize them more than missing detail, and a brief instruction steers a whole behavior class without enumerating each case. When migrating a working prompt to a newer model, simplify first — remove one group of instructions, examples, or tools at a time and re-test — before adding anything new.
 
 ## Reference Selection
 
-- OpenAI GPT-5.6 Sol, GPT-5.5, or GPT-5.4: read [references/openai-gpt-5.md](references/openai-gpt-5.md).
-- Claude Fable 5 / Claude Mythos 5: read [references/claude-fable-5.md](references/claude-fable-5.md).
+- OpenAI GPT-5.6 (Sol, Terra, Luna), GPT-5.5, or GPT-5.4: read [references/openai-gpt-5.md](references/openai-gpt-5.md).
+- Claude Fable 5.1 / Claude Fable 5 / Claude Mythos 5.1: read [references/claude-fable-5.md](references/claude-fable-5.md).
 - Claude Opus 4.8 or Claude Code: read [references/claude-opus-4.8.md](references/claude-opus-4.8.md).
 - Gemini 3 / Gemini 3.1 Pro: read [references/gemini-3.md](references/gemini-3.md).
 - Kimi / Kimi K2.6: read [references/kimi.md](references/kimi.md).
