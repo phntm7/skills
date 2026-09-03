@@ -12,7 +12,7 @@ Use this reference for Claude Opus 5 (flagship), Claude Opus 4.8, Claude Code on
 - **End-to-end agentic coding**: Strongest on difficult multi-file features, architectural refactors, and complete implementation runs. Completes full tasks without leaving stubs, placeholders, or premature stops. Give the full specification up front and let it execute.
 - **Code review & bug detection**: Reviews code with high precision and recall. Accurately flags real logic bugs rather than nitpicks, even at `low` or `medium` effort.
   - *Avoid restrictive filters*: Prompts like "only report high-severity bugs" or "be conservative" cause Opus 5 to follow instructions literally and withhold valid findings. Ask it to report all bugs and filter severity in a separate pass.
-- **Effort efficiency**: `low` and `medium` effort deliver high quality at a fraction of tokens and latency. Default is `high`; use `xhigh` for demanding coding and autonomous tasks.
+- **Effort efficiency**: `low` and `medium` effort deliver high quality at a fraction of tokens and latency. Default is `high`; use `xhigh` for demanding coding and autonomous tasks, and `max` for the hardest frontier problems. For `xhigh`/`max` runs, configure large `max_tokens` budgets (e.g. 32k–64k) so the model has sufficient space for thinking and multi-step tool execution.
 - **1M token context window**: 1M default and maximum context window with consistent instruction following and retrieval throughout the window.
 - **Vision excellence**: Strong on charts, architecture diagrams, UI design, and visual verification. Provide tools to crop, zoom, and visually verify changes rather than relying on thinking alone.
 - **Office deliverables**: Generates multi-sheet spreadsheets with complex formulas and formatted slide decks.
@@ -68,10 +68,15 @@ When you use a tool, you may say a brief sentence first. If no tool can express 
 
 ## Claude Opus 4.8
 
-- Interprets prompts literally at low effort. Does not silently generalize instructions to adjacent files without explicit scope.
-- Favors reasoning over tool calls by default; raise effort (`high`/`xhigh`) to increase tool usage in agentic workflows.
-- House visual style: defaults to warm cream backgrounds (`#F4F1EA`) and serif display type; specify exact color palettes and font tokens for modern frontend deliverables.
-- Keep stable system prompts at the beginning for prompt caching.
+- **Thinking activation**: Thinking is **off by default** in Opus 4.8 unless explicitly enabled via `thinking: { type: "adaptive" }`.
+- **Effort recommendations**: Start at `xhigh` for coding and agentic use; minimum `high` for intelligence-sensitive work.
+- **Sampling parameters**: Do not pass non-default `temperature`, `top_p`, or `top_k`; steer with prompt instructions and effort.
+- **Strict literalism**: Interprets prompts literally at low effort. Does not silently generalize instructions across files or sections without explicit scope ("apply this across all modules, not just the first").
+- **Tool calling vs. reasoning**: Favors internal reasoning over tool calls by default; raise effort (`high`/`xhigh`) to increase tool usage in agentic workflows.
+- **Review recall trap**: Instructions like "only report high-severity issues" or "be conservative" are followed strictly, filtering valid findings. For coverage-first review passes, prompt: *"Report every issue you find, including uncertain or low-severity ones. Do not filter for importance or confidence at this stage. Include confidence and estimated severity per finding for downstream ranking."*
+- **House visual style**: Defaults to warm cream backgrounds (`#F4F1EA`) and serif display type. Generic negations ("don't use cream") simply swap to another fixed palette; specify explicit color hexes and typography tokens for modern frontend deliverables.
+- **Computer use**: Optimized for 1080p (balances accuracy and token cost) or 720p/1366x768 for cost-sensitive workloads (max resolution 2576px / 3.75MP).
+- **Prompt caching**: Keep stable system instructions at the beginning of the prompt; place volatile user context at the end.
 
 ## Sources
 

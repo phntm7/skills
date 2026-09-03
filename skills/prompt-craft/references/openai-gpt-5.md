@@ -27,7 +27,7 @@ Use this reference for the OpenAI GPT-5 family: GPT-5.6 Sol (primary flagship), 
 ### Core Prompting Principles for GPT-5.6
 
 #### 1. Simplify First (Leaner Prompts Win)
-OpenAI internal evals show that removing boilerplate rules, repeated constraints, and unused tool descriptions improved evaluation scores by ~10–15% while cutting tokens by 40–60%.
+In OpenAI internal coding-agent evals, leaner system prompts improved evaluation scores by roughly 10–15% while reducing total tokens by 41–66% and cost by 33–67% (directional sample; validate on your workload).
 - **Delete**: Restated rules, process steps the model handles reliably, unused tool descriptors, vague adjectives ("be thorough", "think deeply").
 - **Keep**: Concrete deliverables, verifiable success criteria ("done" conditions), permission/approval boundaries, required output schemas, and evidence requirements.
 - **Rule of one**: State every instruction once, clearly. Repeating "ask first" or "be careful" across sections destabilizes the model and causes false-positive pauses.
@@ -53,10 +53,10 @@ Require explicit confirmation before destructive actions, external network write
 - For editing/rewriting tasks: state what to preserve (artifact, length, structure, genre, factual claims); improve clarity without adding unrequested claims or promotional tone.
 
 #### 5. Pro Mode (`reasoning.mode: "pro"`)
-- Applies deeper model exploration to return a single high-confidence answer.
-- Works with any GPT-5.6 tier (Sol, Terra, Luna) and any reasoning effort.
-- Best for: Complex optimization, high-stakes architecture, subtle security audits, and mathematical modeling.
-- Configure in the API: `reasoning: { mode: "pro", effort: "high" }`. Keep the same outcome-focused prompt; do not tell the model to "think harder" in text.
+- Applies more model work to return a single high-confidence answer. Increases latency and aggregated billed tokens.
+- Works with any GPT-5.6 tier (Sol, Terra, Luna) without switching to a separate model slug.
+- Preserve standard-mode effort as the baseline (defaults to `medium` if omitted). Do not escalate effort unnecessarily.
+- Use selectively where quality gains justify extra latency and cost (e.g. subtle security audits, complex mathematical modeling, core optimization). Prefer standard mode for routine, latency-sensitive, or high-volume work.
 
 #### 6. Reasoning Effort (`none`, `low`, `medium`, `high`, `xhigh`, `max`)
 - `none` / `low`: Basic factual lookups, latency-sensitive pipelines.
@@ -66,17 +66,18 @@ Require explicit confirmation before destructive actions, external network write
 - **Migration rule**: Preserve the current effort baseline from GPT-5.5/5.4, then compare one level lower. Before jumping to `max`, verify whether the prompt lacks clear success criteria, dependency rules, or verification loops.
 
 #### 7. Persisted Reasoning (`reasoning.context`)
-- **`all_turns`** (GPT-5.6 default; earlier models default to `current_turn`): Reuses compatible reasoning items across multi-turn sessions.
+- **`all_turns` / `auto`** (GPT-5.6 default): Reuses compatible reasoning items across multi-turn sessions. Inspect the response's effective `reasoning.context` to confirm.
   - Continued automatically via `previous_response_id`.
   - For stateless (`store: false`) or Zero Data Retention (ZDR) integrations, callers must replay the complete history, including every response output item, encrypted reasoning items, and assistant `phase`.
   - Reusable across Sol, Terra, and Luna, but **not** across different model families (e.g. cannot replay GPT-5.5 reasoning into GPT-5.6).
-- **`current_turn`**: Stops rendering earlier reasoning items. Use when shifting to an unrelated topic or after a major context reset.
+- **`current_turn`**: Stops rendering earlier reasoning items. Use when shifting to an unrelated topic, after a major context reset, or when stale reasoning adds token weight or anchors the model to outdated approaches.
 
 #### 8. Tool Routing & Programmatic Tool Calling (PTC)
 - Expose only task-relevant tools. Descriptions state what the tool does, when to use it, key return fields, and error behavior.
-- **Programmatic Tool Calling (PTC)**: The model writes and runs lightweight JavaScript inside a **fresh, isolated V8 runtime** (no Node.js, no npm packages, no direct filesystem or external network access). External operations run strictly via opted-in tools (`allowed_callers: ["programmatic_tool_calling"]`).
+- **Programmatic Tool Calling (PTC)**: The model writes and runs lightweight JavaScript inside a **fresh, isolated V8 runtime** (no Node.js, no npm packages, no direct filesystem or external network access).
+  - **Setup**: Add `{ "type": "programmatic_tool_calling" }` to `tools`. Opt eligible tools in with `allowed_callers: ["programmatic"]` (or `["direct", "programmatic"]` for hybrid tools).
   - **When to use**: Bounded stages reducing large data or many calls to a compact schema (filtering logs, ranking records, deduplicating, aggregating).
-  - **When direct calls are required**: Actions needing human approval, semantic LLM judgment between steps, or when the final answer must preserve citations or native artifacts.
+  - **When direct calls are required**: Actions needing human approval, semantic LLM judgment between steps, single tool calls, or when the final answer must preserve citations or native artifacts.
   - **Prompt contract**: Explicitly specify the bounded stage, eligible tools, required output schema, retry limits, and the clean handoff back to direct calls.
   - **Testing**: Test both `program_output` and the final assistant `message`.
 
@@ -91,7 +92,8 @@ Require explicit confirmation before destructive actions, external network write
 - Compact context after major milestones, not every turn.
 
 #### 11. Explicit Prompt Caching Breakpoints
-- GPT-5.6 cache writes cost 1.25× the uncached input rate; cache reads remain discounted.
+- GPT-5.6 cache writes cost 1.25× the uncached input rate; cache reads remain discounted. Track `cached_tokens` and `cache_write_tokens` to measure net savings.
+- Replace deprecated `prompt_cache_retention` with `prompt_cache_options.ttl`.
 - Structure prompts with static, stable instructions first, and dynamic context (user turn, diffs, timestamps) last.
 - Use explicit breakpoints (`prompt_cache_options.mode: "explicit"`) with `prompt_cache_breakpoint: {"mode": "explicit"}` on supported content blocks. Top-level `instructions` cannot carry breakpoints. Placing breakpoints avoids paying 1.25× write costs on dynamic suffixes unlikely to be reused.
 
