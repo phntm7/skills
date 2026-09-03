@@ -4,10 +4,7 @@ Use `gh api` when no dedicated subcommand covers the endpoint, or when a
 subcommand's `--json` output omits the data (inline PR comments, sub-issues,
 Projects V2, issue types).
 
-```bash
-gh api <REST path> [-X METHOD] [-f k=v] [-F k=v] [-H 'Header: v'] \
-  [--paginate [--slurp]] [--jq expr] [--input file] [--cache 1h]
-```
+For current flags, run `gh api --help`.
 
 Placeholders `{owner}`, `{repo}`, `{branch}` resolve from the current
 directory's repo or `GH_REPO`.
@@ -29,10 +26,11 @@ gh api -X POST repos/{owner}/{repo}/issues/5/sub_issues --input - <<'EOF'
 EOF
 ```
 
-Sending an integer field with `-f` is a guaranteed 422. When an endpoint
-takes an id, note whether it wants the **database id / node id** (from `.id`
-in a previous response) or the issue/PR **number** — sub-issues,
-dependencies, and Projects mutations all want ids.
+When an endpoint requires a numeric JSON value, use `-F`; `-f` sends a string
+and may be rejected (often 422). When an endpoint takes an id, note whether
+it wants the **database id / node id** (from `.id` in a previous response) or
+the issue/PR **number** — sub-issues, dependencies, and Projects mutations
+all want ids.
 
 ## Fetching raw file content
 
@@ -78,9 +76,9 @@ gh api graphql -F owner='{owner}' -F name='{repo}' -f query='
   }'
 ```
 
-All `-f`/`-F` fields other than `query` become GraphQL variables. Some
-surfaces are feature-flagged and invisible without a header, e.g.
-`-H 'GraphQL-Features: issue_types'`. Projects V2 is GraphQL-only; the
+All `-f`/`-F` fields other than `query` and `operationName` become GraphQL
+variables. Some surfaces are feature-flagged and invisible without a header,
+e.g. `-H 'GraphQL-Features: issue_types'`. Projects V2 is GraphQL-only; the
 reliable pattern is reverse lookup from a known issue's `projectItems`
 rather than fuzzy project-name search.
 
@@ -101,8 +99,8 @@ rather than fuzzy project-name search.
   Never run `gh auth token` or `gh auth status --show-token`: they print
   credentials into the transcript.
 - Missing scopes fail with `INSUFFICIENT_SCOPES` (common: `project` for
-  Projects V2). Fix: `gh auth refresh -h github.com -s project` — requires
-  interactive browser approval, so tell the user rather than running it
-  in a non-interactive session.
+  Projects V2). Report the missing scope and hand
+  `gh auth refresh -h github.com -s <scope>` to the user — it needs
+  interactive browser approval; never run it as an autonomous fix.
 - GitHub Enterprise: `GH_HOST=github.mycorp.com` plus
   `GH_ENTERPRISE_TOKEN`; or `--hostname` per call.

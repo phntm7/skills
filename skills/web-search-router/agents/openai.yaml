@@ -1,4 +1,4 @@
 interface:
   display_name: "Web Search Router"
-  short_description: "Pick the right web CLI: Linkup, Parallel, or Tavily"
+  short_description: "Pick the right web CLI: Linkup, Parallel, Tavily, TinyFish, or Firecrawl"
   default_prompt: "Use $web-search-router to choose the best web search CLI for this task, then run it via the matching skill."

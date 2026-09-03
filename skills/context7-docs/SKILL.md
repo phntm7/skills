@@ -2,25 +2,28 @@
 name: context7-docs
 description: >
   Use when work depends on current, version-specific documentation for a library,
-  SDK, framework, or API; it retrieves relevant docs and examples with the Context7 CLI.
+  SDK, framework, or API; it retrieves relevant docs and examples with Context7 (`ctx7`).
 ---
 
 # Context7 Docs Lookup
 
+Last verified: 2026-09-03 (ctx7 0.5.9)
+
 Use the `ctx7` CLI to pull focused, current documentation for a library
-instead of relying on training-data memory or scraping docs sites. Docs
-change faster than models retrain — verify signatures, options, and
-idioms against Context7 before writing integration code.
+instead of relying on training-data memory or scraping docs sites. Verify
+signatures, options, and idioms against retrieved Context7 snippets before
+writing integration code.
 
-## Boundary: docs queries only
+## Boundary
 
-Retrieval uses exactly two subcommands: `ctx7 library` and `ctx7 docs`; the
-one other permitted command is read-only `ctx7 whoami` for auth diagnostics.
-Never run `ctx7 setup`, `ctx7 skills` (a subcommand hidden from top-level
-`--help` that installs skills into agent directories), `ctx7 remove`,
-`ctx7 login`, `ctx7 logout`, or configure the Context7 MCP server on the
-user's behalf — Context7 is used here purely as a stateless docs-search
-CLI, and those commands rewrite agent config and skill files.
+Use only `ctx7 library`, `ctx7 docs`, and read-only `ctx7 whoami` (auth
+diagnostics). Use the `web-search-router` skill for general research,
+comparisons, and release history; the repository for current-repo code; and a
+dedicated official-docs skill when one exists. Documented APIs, migration
+guides, deprecations, and error references belong here. Do not run
+`ctx7 setup` (`setup --cli` installs skills), `ctx7 remove`, `ctx7 login`,
+`ctx7 logout`, or `ctx7 upgrade` — they change local auth/config or the CLI
+installation.
 
 Queries are sent to Context7's hosted service: never include secrets, API
 keys, personal data, or proprietary code in a query — describe the problem
@@ -36,17 +39,18 @@ generically instead.
 
    Returns candidates with `Context7-compatible library ID` (`/org/project`),
    snippet counts, source reputation, and a benchmark score. Pick by closest
-   name match first, then higher benchmark score and reputation — the top
-   result is not always best. Prefer the official repo or docs-site entry
-   over `/llmstxt/...` mirrors when scores are close. When the project pins
-   a version, use a version-specific ID: candidates list available versions,
-   appended as `/org/project/version` (some docs sites also index as
-   separate entries, e.g. `/websites/laravel_11_x`). Version pinning is
-   best-effort — results can still mix in snippets from other refs, so for
+   name, highest snippet count, and strongest reputation — the top result is
+   not always best. Prefer the official repo or docs-site entry over
+   `/llmstxt/...` mirrors when name, snippets, and reputation are close.
+   When the project pins a version, use a version-specific ID: candidates
+   list available versions as `/org/project/version` or
+   `/org/project@version` (some docs sites also index as separate entries,
+   e.g. `/websites/laravel_11_x`). Version pinning is best-effort —
+   results can still mix in snippets from other refs, so for
    version-sensitive answers check that each snippet's `Source:` URL (or
    `codeId` in `--json`) actually points at the pinned version and discard
    ones that don't; if little survives, fall back to the official versioned
-   docs via web search.
+   docs via the `web-search-router` skill.
 
 2. **Query the docs**:
 
@@ -61,7 +65,8 @@ generically instead.
    ranking and return shallow results for every topic. Only combine concepts
    when the question is about their interaction ("how does X work with Y").
    Cap the spend: at most 3 `library` and 3 `docs` calls per question; past
-   that, use the best result you have or fall back to web search.
+   that, use the best result you have or fall back to the `web-search-router`
+   skill.
 
 ## Writing good queries
 
@@ -86,7 +91,7 @@ examples.
 
 - No suitable library or the returned docs miss the topic: retry once with a
   broader query or an alternate candidate ID, then fall back to the official
-  docs via a web-search skill and say Context7 didn't cover it.
+  docs via the `web-search-router` skill and say Context7 didn't cover it.
 - Rate-limited or auth errors: `ctx7 whoami` to check status, then tell the
   user — anonymous use works with lower limits; logging in or setting
   `CONTEXT7_API_KEY` is the user's call, not yours.
@@ -102,12 +107,13 @@ ctx7 docs /vercel/next.js "middleware that redirects unauthenticated users"
 ctx7 docs /honojs/hono "how to define middleware" --json
 ```
 
-Near-miss: general web research, news, or non-library questions are not docs
-lookups — use the web-search skills. The corpus is documentation only:
-documented migration guides, deprecations, and error references are fair
-game, but library-vs-library comparisons, undocumented behavior (a "why does
-X throw Y" with no docs match), bug and incident reports, and exact
-release-history questions belong to web search or GitHub issue search.
-When a dedicated official-docs skill exists for a platform (e.g. a
-Claude/Anthropic API skill), prefer it over Context7's aggregation.
-Questions about code in the current repo need the repo itself.
+## Done
+
+Done means every requested concept has a matching snippet or an explicit
+fallback/miss; record the selected library ID/version and each cited
+snippet's Source URL (or JSON codeId/pageId).
+
+## Sources
+
+- Context7 CLI: https://context7.com/docs/clients/cli
+- Context7 API guide: https://context7.com/docs/api-guide

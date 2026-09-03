@@ -8,14 +8,10 @@ description: >
 
 # Parallel CLI
 
-Last verified: 2026-08-04 (CLI v0.7.1).
+Last verified: 2026-09-03 (CLI v0.9.3).
 
-Parallel (parallel.ai) is an AI-native web platform with a CLI. Core
-commands: **search** (ranked LLM-optimized excerpts, 0.2–3 s), **fetch** /
-**extract** (URLs → focused markdown, batch up to 20), **research** (deep
-research at 9 cost tiers), plus **findall** (entity discovery), **enrich**
-(tabular data enrichment), and **monitor** (continuous web tracking). All
-support `--json`; async commands support `--no-wait` and `-o` file output.
+All commands support `--json`; async commands support `--no-wait` and `-o`
+file output.
 If `linkup` or `tvly` is also installed, the `web-search-router` skill
 maps task types to the best engine.
 
@@ -53,8 +49,8 @@ deliverable-grade work.
 
 ## Search
 
-Parallel search takes **both** a natural-language objective and keyword
-queries — providing both gives the best results:
+Parallel search takes a natural-language **objective** and optional keyword
+**`-q` queries**. Both together give the best results; either alone works:
 
 ```bash
 parallel-cli search "OBJECTIVE — what you're trying to learn, with context" \
@@ -102,12 +98,11 @@ parallel-cli fetch URL1 URL2 --objective "what to pull from these pages" --json
 parallel-cli fetch URL --full-content        # whole-page markdown
 ```
 
-Batch up to 20 URLs per call, billed $0.001 **per URL** (a full 20-URL
-batch costs $0.02). Handles JS-heavy pages and
-PDFs automatically — no render flag needed. With `--objective`/`-q` you get
-ranked excerpts focused on the goal; without them, whole-page markdown with
-boilerplate. Anonymous — no login walls. Common pattern: search (mode
-basic) → pick top URLs → one batched fetch with an objective.
+Batch up to 20 URLs per call. Handles JS-heavy pages and PDFs automatically —
+no render flag needed. With `--objective`/`-q` you get ranked excerpts focused
+on the goal; without them, whole-page markdown with boilerplate. Anonymous —
+no login walls. Common pattern: search (mode basic) → pick top URLs → one
+batched fetch with an objective.
 
 ## Research
 

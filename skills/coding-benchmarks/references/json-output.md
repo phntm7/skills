@@ -47,8 +47,17 @@ model × effort combination that exists in the payload. A row has this shape:
 ```
 
 `pass1_pct`, `pass4_pct`, and `ci_pct` are already percentages, not fractions.
-`ci_pct` is the 95% confidence half-interval for pass@1. `model_id` is the
-cross-board join key; `model` preserves the DeepSWE slug.
+`pass1_pct` is the primary attempt-level quality metric; `pass4_pct` is the
+share of tasks solved by at least one of four attempts.
+`ci_pct` is the 95% run-to-run confidence half-interval for pass@1: rows whose
+intervals overlap are tied. A high `pass4_pct` with a modest `pass1_pct` means
+the model benefits from retries. `cost_usd`, `out_tokens`, `steps`, and
+`duration_min` are means per attempt under this benchmark's mini-swe-agent
+workload, not general API pricing — use them for relative comparison between
+rows, not absolute budgeting. `peak_ctx_tokens` is the median peak context
+usage; high values flag models that may hit context-window limits on long
+tasks. `model_id` is the cross-board join key; `model` preserves the DeepSWE
+slug.
 
 ## FrontierCode rows
 
@@ -74,9 +83,17 @@ a different reasoning level.
 ```
 
 `pass_pct`, `score_pct`, and `flagged_pct` are percentages. `pass_pct` is the
-all-blockers pass rate; `score_pct` is the weighted rubric score. `harness`
-matters because FrontierCode measures the model together with its agent
-harness. `effort: null` means the model has no reasoning-level dial.
+primary metric: the all-blockers pass rate. `score_pct` is the weighted rubric
+score and is zero when any blocker fails; both are means over 5 trials per
+effort, and `score_pct` correlates with `pass_pct` while rewarding partial
+quality on non-blocking rubric items. `cost_usd` and `tokens` are per-rollout
+means under each harness; compare them between rows, not as absolute
+budgets. `flagged_pct`
+(share of runs detected consulting solution-bearing sources; those runs score
+zero) exists only in v1_1 — the v1 payload has no such field. `effort: null`
+means the model has no reasoning-level dial. Scores are tied to the harness
+(claude-code, codex, grok-build, chisel, cursor-cli, mini-swe-agent); do not
+infer raw model ability from a single harness row.
 
 ## Combined comparison
 
@@ -101,7 +118,11 @@ Each comparison row contains:
 ```
 
 `missing_from_board` identifies a missing model × effort row in the current
-join; it is distinct from an unmatched filter pattern. The two recommendation
+join; a pattern matched by neither board still appears as a row with both
+boards listed (rendered `absent on deepswe, absent on frontiercode` in
+Markdown). It is distinct from an unmatched filter pattern. `boards.<board>`
+repeats each board's cache and freshness metadata (`from_cache`, `age`,
+`stale`, `fetched_at`). The two recommendation
 signals use selected DeepSWE rows at the same effort: `ci_overlaps_with` lists
 rows whose pass@1 confidence intervals overlap, and `dominated_by` lists rows
 with strictly higher pass@1, lower cost, and non-overlapping intervals.

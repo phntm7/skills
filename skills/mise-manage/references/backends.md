@@ -33,22 +33,18 @@ Docs: <https://mise.jdx.dev/dev-tools/backends/npm.html>. Installs node CLIs (on
 "npm:@anthropic-ai/claude-code" = "latest"
 ```
 
-- **Package manager** is `npm.package_manager = "auto"` by default: mise uses `aube` if installed, else falls back to `npm`. Set explicitly to `"aube"`, `"pnpm"`, `"bun"`, or `"npm"`. Each package manager must be installed to be used.
-- **Lifecycle scripts execute package code at install time.** Behavior depends on the active package manager, and an approval option only affects the manager actually used:
-  - `npm`: mise passes `--ignore-scripts=true` by default (safe). Opt in **per tool** with `npm_args = "--ignore-scripts=false"` — there is **no global `npm_args`**; `npm.package_manager` is the only global npm setting.
-  - `aube` / `pnpm`: dependency build scripts are denied unless allowlisted. Prefer `allow_builds = ["esbuild"]` (one reviewed package) over blanket allowance. `allow_builds = true` passes `--dangerously-allow-all-builds`.
-  - `bun`: does not run arbitrary dependency scripts by default; mise does not add `--trust`. Pass `bun_args = "--trust"` only when you accept broad install-time trust.
-- **npm install-script policy needs two layers (npm ≥11.16 / v12).** npm ≥11.16 adds an `allowScripts` opt-in that defaults install scripts (`pre/install/postinstall`) OFF; npm v12 (est. July 2026) makes it a hard block. mise's `--ignore-scripts=false` does **not** by itself satisfy it — npm still warns `allow-scripts ... not yet covered by allowScripts`. A trusted CLI that needs its `postinstall` therefore needs **both**:
-  1. `npm_args = "--ignore-scripts=false"` on the mise tool, and
-  2. the package name in the `allow-scripts=` allowlist in `~/.npmrc` (comma-separated; recognized by npm ≥11.16 — older npm warns `Unknown user config "allow-scripts"`, so the node-bundled npm must be ≥11.16).
-  `--dangerously-allow-all-scripts=true` overrides the allowlist but then applies to **every** npm invocation including project installs — avoid for global CLIs; keep the allowlist scoped to packages you reviewed.
-- **Before opting in**: read the package's `package.json` `scripts` block and the referenced script files. Prefer `allow_builds` (aube/pnpm) over global script enablement.
-- **`minimum_release_age` transitive support** depends on the package manager version: `aube` (`minimumReleaseAge`), `pnpm >= 10.16.0`, `bun >= 1.3.0`, `npm >= 11.10.0` (older npm uses `--before`). Older versions may error on the forwarded flag.
-- Options: `allow_builds`, `aube_args`, `pnpm_args`, `bun_args`, `npm_args`, plus shared options (`os`, `depends`, `install_env`, `postinstall`).
+- **Package manager**: `npm.package_manager` defaults to `auto`, which installs with mise's embedded [aube](https://github.com/jdx/aube) — no node or package-manager CLI required, and version metadata is queried from the npm registry over HTTP. `"aube"` selects that same embedded installer explicitly; `"aube_cli"`, `"bun"`, `"pnpm"`, and `"npm"` shell out to that tool, which must then be installed. `npm.shell_out = true` forces the npm CLI for the `auto` path only — use it when you depend on npm-only configuration (`cafile`, client certificates, an auth token helper).
+- **Lifecycle scripts execute package code at install time.** `allow_builds`, `trust_policy_excludes`, `pnpm_args`, `bun_args`, and `npm_args` only affect the package manager actually used; an approval option for one does nothing for another.
+  - `aube` (embedded default) / `aube_cli` / `pnpm`: dependency build scripts are denied unless allowlisted. Prefer `allow_builds = ["esbuild"]` (one reviewed package) over blanket allowance; `allow_builds = true` allows every dependency build script (`--dangerously-allow-all-builds` on pnpm). On aube, `trust_policy_excludes` exempts reviewed packages from the `trustPolicy=no-downgrade` check.
+  - `npm`: mise passes `--ignore-scripts=true` by default (safe). On npm >= 11.16.0, `allow_builds = ["<pkg>"]` is forwarded as `--allow-scripts=<pkg>` and mise drops `--ignore-scripts=true`, because npm's `ignore-scripts` setting overrides the allowlist. On older npm, `--ignore-scripts=true` stays and the only opt-in is per-tool `npm_args = "--ignore-scripts=false"`, which lets every package in the install graph run scripts — there is **no global `npm_args`**.
+  - `bun`: does not run arbitrary dependency scripts by default, and `allow_builds` does not apply (mise's bun path is a global install and writes no per-transitive `trustedDependencies` allowlist). Pass `bun_args = "--trust"` only when you accept broad install-time trust.
+- **Before opting in**: read the package's `package.json` `scripts` block and the referenced script files. Prefer a scoped `allow_builds` over enabling scripts wholesale.
+- **`minimum_release_age` transitive support**: the embedded aube installer honors it natively. When shelling out it depends on the tool version — `pnpm >= 10.16.0`, `bun >= 1.3.0`, `npm >= 11.10.0` (`--min-release-age`, day-granular; npm 6.9.0–11.9.x and sub-day windows use `--before`). Older versions may fail on the forwarded flag.
+- Options: `allow_builds`, `trust_policy_excludes` (aube only), `aube_args` (`aube_cli` only — ignored by the embedded installer), `pnpm_args`, `bun_args`, `npm_args`, `allow_low_downloads`, plus shared options (`os`, `depends`, `install_env`, `postinstall`).
 
 ```toml
-"npm:some-cli" = { version = "latest", allow_builds = ["esbuild"] }      # aube/pnpm
-"npm:some-cli" = { version = "latest", npm_args = "--ignore-scripts=false" }  # npm path only
+"npm:some-cli" = { version = "latest", allow_builds = ["esbuild"] }           # aube/aube_cli/pnpm/npm >= 11.16
+"npm:some-cli" = { version = "latest", npm_args = "--ignore-scripts=false" }  # older npm only
 ```
 
 ### Renamed/removed npm packages
@@ -63,7 +59,7 @@ Migrate to the new key, install, then uninstall the old key (clean cutover, no a
 
 ```toml
 [tools]
-"npm:@ampcode/cli" = { version = "latest", npm_args = "--ignore-scripts=false" }
+"npm:@ampcode/cli" = "latest"
 ```
 
 ```bash

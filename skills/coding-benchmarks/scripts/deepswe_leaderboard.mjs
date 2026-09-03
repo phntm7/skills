@@ -14,8 +14,9 @@
 // stale cache exists, the stale copy is used with a warning on stderr.
 //
 // Usage:
-//   node deepswe_leaderboard.mjs [--fresh] [--json] [--version <id>]
+//   node deepswe_leaderboard.mjs [--help] [--fresh] [--json] [--version <id>]
 //                              [--models <patterns>] [--effort <patterns>]
+//     --help     show this usage and exit
 //     --fresh    ignore cache TTL and refetch now
 //     --json     print compact JSON rows instead of markdown
 //     --version  benchmark version id (default: v1.1)
@@ -39,6 +40,17 @@ import {
 
 const BASE = "https://deepswe.datacurve.ai";
 const args = process.argv.slice(2);
+if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
+  console.log(`Usage: node deepswe_leaderboard.mjs [--help] [--fresh] [--json] [--version <id>]
+                             [--models <patterns>] [--effort <patterns>]
+  --help     show this usage and exit
+  --fresh    ignore cache TTL and refetch now
+  --json     print compact JSON rows instead of markdown
+  --version  benchmark version id (default: v1.1)
+  --models   comma-separated model ids, names, families, or globs
+  --effort   comma-separated effort levels or globs`);
+  process.exit(0);
+}
 const VERSION = optionValue(args, "--version", "v1.1");
 const MODEL_PATTERNS = listOptionValues(args, "--models");
 const EFFORT_PATTERNS = listOptionValues(args, "--effort");

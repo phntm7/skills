@@ -88,8 +88,8 @@ it; GitHub attaches the reply to the thread).
 
 ## Creating a new inline comment
 
-Requires the head commit SHA, file path, and line. Integer fields mean `-f`
-(strings only) will 422 — use `-F` for typed values:
+Requires the head commit SHA, file path, and line. Use `-F` for integer fields
+(`line`); `-f` sends a string and may be rejected (often 422):
 
 ```bash
 sha=$(gh pr view 123 --json headRefOid --jq .headRefOid)

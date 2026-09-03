@@ -58,8 +58,8 @@ gh run download <run-id> -n coverage -D ./artifacts
 gh run download <run-id> -p 'logs-*'
 ```
 
-Always pass the run id: without it, gh grabs the latest artifact by name
-across runs, which is nondeterministic.
+Pass a run id when reproducibility matters; without it, gh selects the latest
+matching artifact across runs.
 
 ## Workflows
 

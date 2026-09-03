@@ -2,27 +2,34 @@
 name: github-ops
 description: >
   Use when working with remote GitHub repositories, Actions, PRs, issues,
-  releases, or code search; it provides efficient gh CLI workflows without cloning.
+  releases, or code search via gh. Use local tools for a checkout, the
+  `web-search-router` skill for open-web research, and a browser for GitHub UI.
 ---
 
 # GitHub Operations via gh CLI
 
-Use `gh` for every GitHub data operation. Do not fetch github.com HTML or
-raw.githubusercontent.com with a web tool: `gh` is authenticated (private
-repos work, rate limits are per-user, not anonymous), returns structured JSON,
-and one command replaces a scrape-and-parse round trip. This skill is not for
-driving the github.com browser UI — use a browser tool for that.
+Last verified: 2026-09-03 (gh 2.99.0)
+
+Use `gh` for remote GitHub data. Use local tools for a checked-out repository
+and the `web-search-router` skill for open-web research. Clone only when many
+remote files make it cheaper. `gh` is authenticated and returns structured
+JSON — do not fetch github.com HTML or raw.githubusercontent.com. Use a
+browser tool for the github.com UI.
 
 ## Preflight
 
 - `gh auth status` once per session if unsure (never `gh auth token` or
   `--show-token` — no tokens in the transcript). If auth fails, tell the user
-  to run `gh auth login`. Only when `gh` is unavailable or unauthenticated and
-  the data is public may you fall back to unauthenticated `api.github.com`
-  requests — label the result as a degraded read; never web-scrape private
-  repo pages.
-- Repo-scoped commands (`pr`, `issue`, `run`, `workflow`, `release`, `repo`)
-  need `-R owner/repo` outside a checkout. `gh api` takes no `-R`: its
+  to run `gh auth login`. Missing scopes (`INSUFFICIENT_SCOPES`, common:
+  `project` for Projects V2): report the missing scope and hand
+  `gh auth refresh -h github.com -s <scope>` to the user — it needs
+  interactive browser approval; never run it as an autonomous fix. Only when
+  `gh` is unavailable or unauthenticated and the data is public may you fall
+  back to unauthenticated `api.github.com` requests — label the result as a
+  degraded read; never web-scrape private repo pages.
+- Commands that need repository context (`pr`, `issue`, `run`, `workflow`,
+  `release`) take `-R owner/repo` outside a checkout. `gh repo view` and
+  `gh repo clone` take `OWNER/REPO` positionally. `gh api` takes no `-R`: its
   `{owner}`/`{repo}` placeholders resolve from the local checkout or
   `GH_REPO=owner/repo`; explicit paths (`repos/owner/repo/...`) and
   `gh search` need neither.
@@ -31,22 +38,18 @@ driving the github.com browser UI — use a browser tool for that.
 
 ## Reads vs writes
 
-Reads (view, list, search, diff, checks, log and artifact fetching) are
-always safe to run. Anything that mutates GitHub state — commenting,
-reviewing, creating or closing issues, rerunning or dispatching workflows,
-enabling/disabling workflows, creating releases — is an external side
-effect visible to other people: run it only when the user's request clearly
-asks for that specific mutation; otherwise confirm first.
+Read commands do not mutate remote GitHub state; downloads may write locally.
+Anything that mutates GitHub state — commenting, reviewing, creating or
+closing issues, rerunning or dispatching workflows, enabling/disabling
+workflows, creating releases — is an external side effect visible to other
+people: run it only when the user's request clearly asks for that specific
+mutation; otherwise confirm first.
 
 ## Context economy
 
-Always request only the fields you need: `--json field1,field2 --jq '...'`.
-Never dump raw API responses into context.
-
-- Run a command with bare `--json` (no argument) to get the list of available
-  fields — this error output is the documented discovery mechanism.
-- `--jq` needs no system jq; gh embeds one. On normal commands `--jq` requires
-  `--json`; on `gh api` it works directly on the response.
+Request only the fields needed: `--json field1,field2 --jq '...'`. Avoid
+dumping raw responses. Bare `--json` lists fields. `--jq` is embedded; on
+normal commands it requires `--json`, on `gh api` it works directly.
 
 ## Task → command map
 
@@ -69,37 +72,18 @@ Never dump raw API responses into context.
 | Releases | `gh release list`, `gh release view TAG --json body,assets`, `gh release download TAG -p '*.tgz'` |
 | Anything else | `gh api <REST path>` or `gh api graphql -f query='...'` — see [references/api.md](references/api.md) |
 
-## Reading repo content without cloning
-
-```bash
-gh repo view owner/repo --json description,defaultBranchRef,latestRelease
-gh api repos/owner/repo/readme -H 'Accept: application/vnd.github.raw+json'
-gh api 'repos/owner/repo/contents/src/main.ts?ref=v2' -H 'Accept: application/vnd.github.raw+json'
-```
-
-Without the raw Accept header the contents endpoint returns base64 JSON. Do
-not use `raw.githubusercontent.com` (404s on private repos) or the
-`download_url` field (temporary tokenized URL). If you need many files from
-one repo, a shallow clone is cheaper: `gh repo clone owner/repo -- --depth 1`.
+Without the raw Accept header the contents endpoint returns base64 JSON.
+Skip `raw.githubusercontent.com` (404s on private repos) and `download_url`
+(temporary token). Many files: `gh repo clone owner/repo -- --depth 1`.
 
 ## Searching GitHub
 
-```bash
-gh search code 'parseConfig' -R owner/repo --json path,textMatches -L 20
-gh search issues 'timeout error' --repo owner/repo --state open --json number,title,url
-gh search prs --review-requested @me --state open --json number,title,repository
-```
-
 Raw qualifiers mix into the query (`gh search code panic path:pkg language:go`).
 Negated qualifiers must go after `--`: `gh search issues -- "crash -label:bug"`.
-Know the limits: code search uses a legacy engine (no regex, results differ
-from github.com), all search caps at 1000 results, and search rate limits are
-much lower than normal API calls. Full qualifier cheat sheet, per-subcommand
-flags, and limits: [references/search.md](references/search.md).
+`--search-type`, qualifier cheat sheet, query limits, and search vs list:
+[references/search.md](references/search.md).
 
 ## Actions / CI failures
-
-The core debugging loop:
 
 ```bash
 gh pr checks 123 --json name,state,bucket,link          # bucket: pass|fail|pending|skipping|cancel
@@ -109,8 +93,8 @@ gh run view <run-id> --json jobs --jq '.jobs[] | {name, databaseId, conclusion}'
 gh run view --job <job-databaseId> --log-failed          # narrow to one job
 ```
 
-`--job` takes the job `databaseId`, never the number from a browser URL.
-Rerun, watch, artifacts, workflow dispatch: [references/actions.md](references/actions.md).
+Job IDs, log association, reruns, watch, artifacts, workflow dispatch:
+[references/actions.md](references/actions.md).
 
 ## PR comments and reviews
 
@@ -122,36 +106,21 @@ A PR has three distinct comment surfaces; `gh pr view --json` only covers two:
 | Reviews (approve / request changes) | `gh pr view N --json reviews,reviewDecision` | `gh pr review N --approve` / `--request-changes` / `--comment -b "..."` |
 | Inline code comments (diff-anchored) | `gh api repos/{owner}/{repo}/pulls/N/comments` | reply: `gh api -X POST repos/{owner}/{repo}/pulls/N/comments/<id>/replies -f body='...'` |
 
-Write multiline bodies with `--body-file` or a heredoc — never inline `-b`
-with `\n` escapes (rendered literally). For idempotent bot comments, use
-`gh pr comment N --edit-last --create-if-none -F f.md`. REST comment data has
-no thread-resolution state, so it can't tell actionable feedback from
-already-resolved threads — use the GraphQL `reviewThreads` query for that.
-Details, plus creating inline comments and reviews:
+Write multiline bodies with `--body-file` or a heredoc; `\n` in `-b` renders
+literally. For idempotent bot comments, use
+`gh pr comment N --edit-last --create-if-none -F f.md`. Inline comments,
+thread resolution, and creating reviews:
 [references/pr-reviews.md](references/pr-reviews.md).
 
-## Gotchas
+## Done
 
-- `gh api` switches GET→POST as soon as any `-f`/`-F` field is added. For
-  query-string params, force `--method GET`.
-- `-f` sends strings only. Integer, boolean, or nested body fields need `-F`
-  (typed) or `--input -` with a JSON heredoc — otherwise the API returns 422.
-- `gh api --paginate` emits each page as a separate JSON document; add
-  `--slurp` to merge into one array.
-- Sub-issues, dependencies, and Projects mutations take the numeric issue
-  **id** (or GraphQL node id), not the `#123` number — capture `.id` on create.
-- `gh pr view --json comments` misses inline review comments entirely; use the
-  `pulls/N/comments` endpoint.
-- Missing-scope errors (e.g. `INSUFFICIENT_SCOPES` on Projects): fix with
-  `gh auth refresh -h github.com -s <scope>`.
-- Repeated identical reads: add `--cache 1h` to `gh api` calls. Quota check:
-  `gh api rate_limit`.
+Done means the target repo/PR/run is identified and only requested fields
+are returned; a CI diagnosis names the run, job, failing step, and URL/log
+evidence; auth, scope, and degraded-read failures are stated explicitly.
 
-## References
+## Sources
 
-| Reference | Load when |
-|---|---|
-| [references/search.md](references/search.md) | Building non-trivial searches: qualifiers, boolean limits, advanced issue search, choosing search vs list vs api |
-| [references/actions.md](references/actions.md) | Debugging CI beyond `--log-failed`: reruns, artifacts, watch, workflow dispatch, log quirks |
-| [references/pr-reviews.md](references/pr-reviews.md) | Posting inline review comments, creating reviews via API, reading review threads on busy PRs |
-| [references/api.md](references/api.md) | Any `gh api` call beyond a simple GET: field typing, pagination, GraphQL, rate limits, auth scopes |
+- gh manual: https://cli.github.com/manual
+- gh api: https://cli.github.com/manual/gh_api
+- gh search: https://cli.github.com/manual/gh_search
+- GitHub REST search: https://docs.github.com/en/rest/search/search#constructing-a-search-query

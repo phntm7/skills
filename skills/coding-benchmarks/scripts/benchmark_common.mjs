@@ -67,6 +67,13 @@ function slugify(value) {
 // These aliases are deliberately explicit for models that appear on both
 // boards with different punctuation or display-name conventions. Unknown
 // future models still get a deterministic slug via canonicalModelId().
+//
+// Identity policy: version-distinct models are NEVER merged. `claude-fable-5`
+// stays distinct from Fable 5.1, and bare `deepseek-v4-flash` / `deepseek-v4-pro`
+// stay distinct from `deepseek-v4-flash-0731` / `deepseek-v4-pro-0813`. Add an
+// alias only when both boards confirm the two names are the same model; a
+// roster model absent from a board surfaces as an explicit absent/missing row,
+// never as a silent merge or silent gap.
 const CANONICAL_BY_KEY = new Map([
   ["claudeopus5", "claude-opus-5"],
   ["claudeopus48", "claude-opus-4.8"],

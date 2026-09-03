@@ -1,6 +1,7 @@
 # Research and batch tasks
 
-Source: Linkup research/tasks best-practices docs (verified 2026-08-04).
+Source: Linkup research/tasks best-practices docs. Last verified:
+2026-09-03 (CLI v1.3.0).
 
 ## Research modes
 
@@ -16,8 +17,10 @@ Example prompts per mode:
 - investigate: `Build a detailed report on the company Anthropic from the perspective of a lawyer.`
 - research: `List all the AI startups that raised more than a $10M seed round in Europe in the last 6 months. For each, generate a short description and include its website.`
 
-Omitting `--mode` lets the agent auto-classify — convenient but
-unpredictable in cost, latency, and output shape. Set it explicitly.
+`--mode auto`, and omitting `--mode`, both let the agent classify the
+question — convenient but unpredictable in cost, latency, and output
+shape. Name `answer`, `investigate`, or `research` when any of the three
+must be pinned.
 
 ## Reasoning depth = budget = price
 
@@ -34,7 +37,6 @@ coverage, not verbosity.
 
 ## Writing the research brief
 
-Terse briefs work; precise briefs produce more predictable, aligned output.
 Specify any of: angles to cover, leads to pursue, facts to verify, entities
 to compare, constraints an answer must satisfy, expected structure.
 
@@ -100,9 +102,9 @@ order:
 ]
 ```
 
-- Search task input takes `query` (verified against CLI v1.0.2 — the SDK
-  maps it to the wire field `q` itself; passing `q` directly leaves the
-  query undefined and the task fails).
+- Search task input takes `query` (observed on CLI v1.0.2, not re-tested on
+  v1.3.0 — the SDK maps it to the wire field `q` itself; passing `q`
+  directly leaves the query undefined and the task fails).
 - >100 items: split into parallel batches; no penalty.
 - Dependent work (search results feeding fetches): submit the second batch
   after the first completes.

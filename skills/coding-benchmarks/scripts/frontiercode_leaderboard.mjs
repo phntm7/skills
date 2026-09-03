@@ -31,10 +31,11 @@
 // stale cache exists, the stale copy is used with a warning on stderr.
 //
 // Usage:
-//   node frontiercode_leaderboard.mjs [--fresh] [--json]
+//   node frontiercode_leaderboard.mjs [--help] [--fresh] [--json]
 //                                     [--version v1_1|v1] [--subset main|extended]
 //                                     [--metric pass|score] [--all]
 //                                     [--models <patterns>] [--effort <patterns>]
+//     --help      show this usage and exit
 //     --fresh     ignore cache TTL and refetch now
 //     --json      print compact JSON rows instead of markdown
 //     --version   benchmark revision id (default: v1_1; v1 is archived)
@@ -62,6 +63,22 @@ import {
 const BASE = "https://cognition.com/data/frontiercode-leaderboard/data.json";
 
 const args = process.argv.slice(2);
+if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
+  console.log(`Usage: node frontiercode_leaderboard.mjs [--help] [--fresh] [--json]
+                                    [--version v1_1|v1] [--subset main|extended]
+                                    [--metric pass|score] [--all]
+                                    [--models <patterns>] [--effort <patterns>]
+  --help      show this usage and exit
+  --fresh     ignore cache TTL and refetch now
+  --json      print compact JSON rows instead of markdown
+  --version   benchmark revision id (default: v1_1; v1 is archived)
+  --subset    task subset (default: main; extended = 150 tasks)
+  --metric    ranking metric (default: pass; score = rubric score)
+  --all       one row per model x effort instead of best-effort-per-model
+  --models    comma-separated model ids, names, families, or globs
+  --effort    comma-separated effort levels or globs`);
+  process.exit(0);
+}
 const VERSION = optionValue(args, "--version", "v1_1");
 const SUBSET = optionValue(args, "--subset", "main");
 const METRIC = optionValue(args, "--metric", "pass");

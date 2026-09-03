@@ -4,11 +4,12 @@
 // their data; this wrapper joins their compact JSON rows.
 //
 // Usage:
-//   node compare_benchmarks.mjs [--json] [--fresh] [--all]
+//   node compare_benchmarks.mjs [--help] [--json] [--fresh] [--all]
 //                              [--models <patterns>] [--effort <patterns>]
 //                              [--subset main|extended] [--metric pass|score]
 //                              [--deepswe-version <id>]
 //                              [--frontiercode-version v1_1|v1]
+//     --help                 show this usage and exit
 //
 // Without --all, each board contributes one best row per requested model.
 // With --all, the comparison is keyed by model × effort and FrontierCode is
@@ -28,6 +29,25 @@ import {
 } from "./benchmark_common.mjs";
 
 const args = process.argv.slice(2);
+if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
+  console.log(`Usage: node compare_benchmarks.mjs [--help] [--json] [--fresh] [--all]
+                             [--models <patterns>] [--effort <patterns>]
+                             [--subset main|extended] [--metric pass|score]
+                             [--deepswe-version <id>]
+                             [--frontiercode-version v1_1|v1]
+  --help                 show this usage and exit
+  --json                 print compact JSON instead of a markdown table
+  --fresh                ignore cache TTL and refetch both boards now
+  --all                  one row per model x effort (FrontierCode every level)
+  --models <patterns>    comma-separated model ids, names, families, or globs
+  --effort <patterns>    comma-separated effort levels or globs
+  --subset main|extended FrontierCode task subset (default: main)
+  --metric pass|score    FrontierCode ranking metric (default: pass)
+  --deepswe-version <id> benchmark revision (default: v1.1)
+  --frontiercode-version v1_1|v1
+                         benchmark revision (default: v1_1)`);
+  process.exit(0);
+}
 const ALL = hasFlag(args, "--all");
 const FRESH = hasFlag(args, "--fresh");
 const JSON_OUTPUT = hasFlag(args, "--json");
@@ -163,6 +183,10 @@ function compareRows(deepsweResult, frontiercodeResult) {
   const deepswe = boardRowsByKey("deepswe", deepsweRows);
   const frontiercode = boardRowsByKey("frontiercode", frontiercodeRows);
   const keys = new Set([...deepswe.keys(), ...frontiercode.keys()]);
+  // A requested pattern matched by neither board still gets an explicit row.
+  const dsUnmatched = new Set(deepsweResult?.payload?.unmatched_models || []);
+  const absentEverywhere = (frontiercodeResult?.payload?.unmatched_models || []).filter((p) => dsUnmatched.has(p));
+  for (const pattern of absentEverywhere) keys.add(pattern);
   const allDeepSweRows = [...deepswe.values()];
 
   return [...keys]
@@ -246,7 +270,7 @@ function markdown(output) {
           row.deepswe?.cost_usd
         )} | ${row.efforts.frontiercode || "-"} | ${pct(row.frontiercode?.pass_pct)} | ${dollars(
           row.frontiercode?.cost_usd
-        )} | ${row.missing_from_board.join(", ") || "-"} |`
+        )} | ${row.missing_from_board.map((b) => `absent on ${b}`).join(", ") || "-"} |`
     )
     .join("\n");
   if (output.errors.length) {

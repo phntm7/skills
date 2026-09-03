@@ -8,15 +8,13 @@ description: >
 
 # Tavily CLI
 
-Last verified: 2026-08-04 (CLI v0.1.6).
+Last verified: 2026-09-03 (CLI v0.1.8).
 
-Tavily is an AI-native web API with the `tvly` CLI. Commands: **search**,
-**extract** (URLs → content), **map** (discover site URLs), **crawl** (bulk
-extract a site), **research** (cited research reports, ~30 s–minutes). All
-support `--json` and `-o file`. Billing is credit-based: 1 credit = $0.008
-pay-as-you-go; 1,000 free credits/month. If `linkup` or `parallel-cli` is
-also installed, the `web-search-router` skill maps task types to the best
-engine.
+Commands support `--json` and `-o <file>`; when choosing among engines, load
+the `web-search-router` skill.
+
+For a first install, tell the user that `tvly init` authenticates and installs
+agent skills; run it only with their approval.
 
 ## Setup check
 
@@ -24,9 +22,9 @@ engine.
 tvly --status   # version + auth source
 ```
 
-Auth: `TAVILY_API_KEY` env var or `tvly login` (browser OAuth or
-`--api-key`). Search and extract even work unauthenticated under a rate
-cap; map/crawl/research require a key.
+Auth: `TAVILY_API_KEY` env var or `tvly login` (browser OAuth; `--api-key` for
+key input; `--no-browser` for headless/SSH). Search and extract work
+unauthenticated under a rate cap; map/crawl/research require a key.
 
 ## Choosing the right command
 
@@ -60,9 +58,10 @@ Query rules:
   async traits" returned the Rust video game and Wikipedia's corrosion
   article; "Нова пошта" returned Wikipedia's "Nova". Write "Rust language
   async traits", "Нова пошта доставка".
-- Anchor regional queries with city/country terms — results can drift to
-  same-language sites from the wrong country (a Kyiv exchange-rate query
-  returned Russian exchange sites).
+- Anchor regional queries with city/country terms or phrase the query in
+  the local language — results can drift to same-language sites from the
+  wrong country (a Kyiv exchange-rate query returned Russian exchange sites;
+  a Ukrainian-language query surfaced local operator pages English missed).
 - Expect occasional duplicate results from mirror domains (same article on
   `.com`/`.dev`/staging hosts) — dedupe by title before counting coverage.
 - Split multi-facet questions into separate calls (`Competitors of X`,
@@ -85,8 +84,6 @@ Query rules:
 - Each result has a relevance `score` (0–1): post-filter with a ~0.5–0.7
   threshold; the score means query-relevance, not factual-match.
 
-Regional queries: phrase the query in the local language (a Ukrainian query
-surfaces local trackers and official operator pages that English misses).
 Avoid combining `--country` with `--topic news` — it drags in social-media
 noise.
 
@@ -148,11 +145,11 @@ Deeper reference: [references/search-and-extract.md](references/search-and-extra
 
 ## Cost discipline
 
-- Basic search 0.8¢, advanced 1.6¢, extract ~0.16¢/URL — probe freely.
-- Research is **dynamic-priced**: mini can reach $0.88, pro $2.00. Use mini
-  for scoped questions; reserve pro for genuinely multi-domain reports the
-  user asked for. Set `--model` explicitly — `auto` may pick pro.
-- Crawl cost scales with pages: `--limit` and `--select-paths` are your
-  budget controls; a depth-3 unconstrained crawl of a big docs site can
-  burn hundreds of credits.
-- Free tier: 1,000 credits/month covers ~1,000 basic searches.
+- Search is cheap (0.8¢ basic, 1.6¢ advanced) and extract ~0.16¢/URL —
+  probe freely. Free tier: 1,000 credits/month (~1,000 basic searches).
+- Research is dynamic-priced; use `mini` for scoped questions, reserve `pro`
+  for multi-domain reports the user asked for. Set `--model` explicitly —
+  `auto` may pick `pro`.
+- Crawl cost scales with pages; `--limit` and `--select-paths` are budget
+  controls. An unconstrained depth-3 crawl of a large docs site burns
+  hundreds of credits.

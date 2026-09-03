@@ -1,6 +1,6 @@
 # Research, FindAll, enrich, and monitor
 
-Source: Parallel docs (docs.parallel.ai), verified 2026-08-04.
+Source: Parallel docs (docs.parallel.ai), verified 2026-09-03 (CLI v0.9.3).
 
 ## Research processors
 
@@ -47,6 +47,10 @@ parallel-cli research processors                # list tiers + latencies
 - Chaining: every run prints an interaction id; pass
   `--previous-interaction-id trun_...` to continue with prior context
   (multi-turn research).
+- For cross-session continuation, pass `--memory-scope-key <key>` to persist
+  research context in named memory (omit it for personal memory);
+  `parallel-cli memory` searches and manages saved Task, Monitor, and FindAll
+  entries.
 
 ## Writing research briefs
 

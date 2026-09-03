@@ -2,7 +2,9 @@
 
 Round 1 (2026-08-04/05) covers Linkup, Parallel, Tavily.
 Round 2 (2026-08-18) adds TinyFish and Firecrawl and focuses on
-bot-protected sites — see "Round 2" below.
+bot-protected sites — see "Round 2" below. Every result here is a dated
+single-run observation, not a standing capability claim; vendor docs were
+last re-checked 2026-09-03 against the sources at the end of this file.
 
 ## Round 1: Linkup vs Parallel vs Tavily
 
@@ -106,9 +108,11 @@ are extracted-text length at each CLI's max settings.
 | arXiv PDF | **FAIL raw bytes** | PASS | PASS | PASS | PASS |
 | **Clean passes /8** | 3 | 3 | **6** | 4 | **6** |
 
-Idealista is the discriminator: **only Parallel and Firecrawl get through
-it at all**. Amazon is not actually hard — all five pass; they differ only
-in volume returned.
+Idealista is the discriminator: in this sample **only Parallel and
+Firecrawl got through it at all**, and the other three failed on every
+attempt; re-test before assuming a given engine still can or cannot reach
+a protected host. Amazon is not actually hard — all five pass; they differ
+only in volume returned.
 
 ### Structured extraction from a protected page
 
@@ -143,26 +147,33 @@ anything beyond grounding needs a second fetch call.
 
 ### Distinctive failures observed (round 2)
 
-- **TinyFish `--location` silently ignores anything but an ISO 3166-1
-  alpha-2 code.** `--location "Lisbon, Portugal"`, `Portugal`, `Lisboa`,
-  and `Tokyo, Japan` were all discarded; `--location pt` and `ua` worked
+- **TinyFish `--location` accepted only an ISO 3166-1 alpha-2 code in this
+  round.** `--location "Lisbon, Portugal"`, `Portugal`, `Lisboa`, and
+  `Tokyo, Japan` were all discarded; `--location pt` and `ua` worked
   (thefork.pt / tripadvisor Kyiv). Worse, with no valid location the
-  results anchor to a **random rotating US city per call** — two identical
-  `"best restaurants"` calls returned Chapel Hill/Miami then Hiram, GA.
-  Always pass `--location <iso2>`; results are otherwise irreproducible.
-  `--language` appeared inert in every combination tested.
-- **TinyFish fetch does not parse PDFs.** `arxiv.org/pdf/1706.03762`
-  returned literal `%PDF-1.5` binary in the `text` field. The other four
-  all parse it. `--include-etag-and-last-modified` returned no etag or
-  last_modified keys on any page tested, so the documented conditional-GET
-  flow (`--if-none-match`) has nothing to feed it.
+  results anchored to a **random rotating US city per call** — two
+  identical `"best restaurants"` calls returned Chapel Hill/Miami then
+  Hiram, GA. Current CLI docs document human-readable locations such as
+  `Vietnam`, so re-test; either way, pass `--location` explicitly or
+  results are irreproducible. `--language` appeared inert in every
+  combination tested.
+- **TinyFish fetch returned unparsed PDF bytes in this round.**
+  `arxiv.org/pdf/1706.03762` returned literal `%PDF-1.5` binary in the
+  `text` field while the other four parsed it. Current Fetch docs document
+  PDF text extraction plus ETag/Last-Modified conditional requests, and
+  `--include-etag-and-last-modified` returned no etag or last_modified
+  keys on any page tested here — re-test both before relying on them.
 - **Firecrawl multi-URL `scrape` prints nothing to stdout** — it writes
   `.firecrawl/<host>.md` files into the CWD and littered this repo. Use
   one URL per call, or expect files.
 - **Firecrawl refuses LinkedIn by policy** ("we do not support this
   site"), so Linkup keeps LinkedIn outright.
-- **Firecrawl `research search-papers` → HTTP 401** on this account; the
-  paper index is not entitled by default. `developer` works fine.
+- **Firecrawl `research search-papers` → HTTP 401** on this account on
+  2026-08-18; `developer` worked fine. Current pricing lists the Research
+  Index paper endpoints as free and the rate-limit docs say research and
+  developer search work without an API key, so re-test before relying on
+  it — and treat a 401 as an account-specific entitlement or auth problem
+  rather than a general behavior.
 - Firecrawl free tier caps **concurrency at 2** — batches queue, unlike
   the other four.
 
@@ -176,14 +187,16 @@ anything beyond grounding needs a second fetch call.
 - **Firecrawl `--categories github,research,pdf`** hard-filters search to
   those source types (all 5 results were github.com issues/repos), and
   `--location "Lisboa,Portugal" --country PT` geo-targets correctly with
-  human-readable names — the thing TinyFish gets wrong.
+  human-readable names.
 - **Firecrawl `--scrape`** returns search results *with* full markdown in
-  one call (71 KB for the top hit, 4 credits for 2 results).
-- **TinyFish Search and Fetch are $0 per call on every plan**, including
-  free — plans buy throughput, not calls (30 search/min, 150 fetch/min on
-  paid; 5 search/min free). It also fetches multiple URLs per call
-  (3 URLs, 165 KB, 10 s) and offers a structured document-tree
-  `--format json` and `--links`/`--image-links`.
+  one call (71 KB for the top hit, 4 credits for 2 results at the credit
+  rates in force during this round).
+- **TinyFish Search and Fetch are $0 per call**, rate-limited rather than
+  metered: current pricing lists no paid plans, 30 searches/min and 500/hr
+  for Search, and 150 fetch URLs/min and 1,000/day for Fetch (this round
+  observed a 5 search/min free cap that current pricing no longer lists).
+  It also fetches multiple URLs per call (3 URLs, 165 KB, 10 s) and offers
+  a structured document-tree `--format json` and `--links`/`--image-links`.
 - **Parallel caches aggressively**: first idealista fetch took 41 s live,
   repeats served in 0.7 s, and `--disable-cache-fallback` still succeeded
   (that flag rejects only *stale* content, not cache hits).
@@ -193,3 +206,19 @@ anything beyond grounding needs a second fetch call.
 - TinyFish search + fetch: **$0**, rate-limited only.
 - Firecrawl: 1 credit/scrape, 2/search, 4 for search+scrape of 2 results;
   ~57 credits consumed across this round of 1,000/mo free.
+- Firecrawl's current credit rates are 2 credits per 10 search results
+  plus 1 credit per scraped page (so `--limit 3 --scrape` is 5 credits),
+  and `--format json` adds 4 credits per page.
+
+## Sources (re-checked 2026-09-03)
+
+- Linkup CLI: https://docs.linkup.so/pages/sdk/cli/cli.md
+- Linkup Search: https://docs.linkup.so/pages/documentation/endpoints/search/overview.md
+- Linkup Fetch: https://docs.linkup.so/pages/documentation/endpoints/fetch/overview.md
+- Linkup pricing: https://docs.linkup.so/pages/documentation/platform/pricing.md
+- Parallel search settings: https://docs.parallel.ai/search/advanced-search-settings.md
+- TinyFish CLI: https://docs.tinyfish.ai/cli/commands.md
+- TinyFish Fetch: https://docs.tinyfish.ai/fetch-api/reference.md
+- TinyFish pricing: https://www.tinyfish.ai/pricing
+- Firecrawl pricing: https://www.firecrawl.dev/pricing
+- Firecrawl rate limits: https://docs.firecrawl.dev/rate-limits.md

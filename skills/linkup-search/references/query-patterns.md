@@ -1,6 +1,7 @@
 # Query patterns per depth
 
-Source: Linkup search best-practices docs (verified 2026-08-04).
+Source: Linkup search best-practices docs. Last verified: 2026-09-03
+(CLI v1.3.0).
 
 ## fast — keyword-only, no LLM
 
@@ -149,3 +150,14 @@ linkup search "current stable versions of Node.js LTS and pnpm" \
 Date-filter caveat: some pages (product pages, news) carry a metadata
 publish date that differs from the last update, which makes date filtering
 unstable — treat filtered recency as approximate.
+
+## Index behaviors to expect
+
+- News-style queries surface fresh **LinkedIn posts** (24–48 h) that carry
+  the story but are social, not citable. For citable coverage, add
+  `--exclude-domains linkedin.com` or name news outlets in the query.
+- For live data (rates, prices, schedules), raw `search-results` can return
+  years-stale pages; `sourced-answer` reconciles sources and dates far
+  better — use it for anything time-sensitive.
+- Results may include localized duplicates of one page (ja/pl/zh docs
+  mirrors) — dedupe by path before counting coverage.

@@ -7,6 +7,8 @@ description: >
 
 # Mise Manage
 
+Last verified: 2026-09-03 (mise 2026.9.1)
+
 `mise` (mise-en-place) is a polyglot tool-version manager, environment manager, and task runner. Use this skill to install, pin, upgrade, and debug tools globally and per project. Prefer config inspection and dry runs before mutating shared global state.
 
 ## Mental Model
@@ -22,7 +24,7 @@ description: >
 ## Preflight
 
 1. Confirm the binary and version: `command -v mise && mise --version`.
-2. See which config files are loaded and in what order: `mise config` (alias `mise cfg`).
+2. See which config files are loaded and in what order: `mise config` (aliases `cfg`, `toml`).
 3. Inspect the file you intend to change directly — project `mise.toml` or global `~/.config/mise/config.toml`.
 4. Check active vs configured versions: `mise ls --current`. Check what is outdated: `mise outdated`.
 5. Preview upgrades with `mise up --dry-run` before mutating. Use `--yes` only when the user asked for non-interactive changes.
@@ -89,10 +91,10 @@ CLI reference: <https://mise.jdx.dev/cli/>.
 
 Project config resolves in this precedence (top wins), merged up the directory tree (see [configuration](https://mise.jdx.dev/configuration.html)):
 
-- `mise.local.toml` (do not commit), then `mise.toml`, then `mise/config.toml`, `.mise/config.toml`, `.config/mise.toml`, `.config/mise/config.toml`, `.config/mise/conf.d/*.toml`. `mise.<env>.toml` (with `MISE_ENV`) layers in too.
+- `mise.local.toml` (do not commit), then `mise.toml` / `.mise.toml`, then `mise/config.toml`, `.mise/config.toml`, `.config/mise.toml`, `.config/mise/config.toml`, `.config/mise/conf.d/*.toml`. `mise.<env>.toml` (with `MISE_ENV`) layers in too.
 - Global: `~/.config/mise/config.toml`. System: `/etc/mise/config.toml`.
 
-Merge behavior: `[tools]`, `[env]`, `[settings]` are additive with overrides; each `[tasks.*]` is replaced wholesale by the closer file.
+Merge behavior: `[tools]`, `[env]`, `[settings]` are additive with overrides; each `[tasks.*]` is replaced wholesale by the closer file. `[tool_config]` is scoped rather than merged: it applies only to tools declared by configs sharing the same config root, and is not merged into invocation-wide settings.
 
 ```toml
 [tools]
@@ -163,6 +165,7 @@ mise install                  # install exact locked versions
 
 - Commit `mise.lock` and any `mise.<env>.lock`; gitignore `mise.local.lock`.
 - `locked = true` (or `MISE_LOCKED=1`) requires every tool to have a pre-resolved URL in the lockfile — fully offline/reproducible CI. Note: `locked` is **global in scope**, so it also covers global config tools; run `mise lock -g` if global tools warn.
+- `[tool_config] locked = true` scopes strict mode to one config root — only tools declared by configs sharing that root must be locked; tools inherited from global or parent roots keep their own policy.
 - Checksum/URL support is full for `aqua`/`http`/`github`/`gitlab`, version-only for `npm`/`cargo`/`pipx`/`asdf`. See [mise.lock](https://mise.jdx.dev/dev-tools/mise-lock.html).
 
 ## Feature Map
@@ -203,7 +206,6 @@ For package-manager-backed CLIs, verify the actual binary name (e.g. `npm:@ampco
 - After editing a config with env/tasks/hooks, trust it (`mise trust`) so mise will parse it.
 - Prefer `aqua`/`github` backends over `npm`/`pipx`/`asdf`/`vfox`/`ubi` when a tool is available through more than one.
 - Do not enable lifecycle scripts (`npm_args = "--ignore-scripts=false"`, `allow_builds`, `--trust`) just to silence a warning — inspect the scripts first; they execute package code at install time.
-- Do not confuse release-age filtering with prerelease filtering; they are independent settings.
 - Do not keep compatibility shims for renamed tools unless the user needs both names — migrate and uninstall the old key.
 - One cache-cleared retry is not proof of an upstream fix; corroborate with the upstream registry/release API.
 - Do not use uv `--index-strategy unsafe-best-match` unless every configured index is equally trusted.

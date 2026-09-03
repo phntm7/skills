@@ -15,37 +15,20 @@ Prefer `list` over `search` when you need *all* matching items: search results
 cap at 1000 and can lag behind reality; list endpoints paginate through
 everything.
 
-## The five subcommands
+## Flags
 
-All support `--json fields`, `--jq`, `--template`, and `-L/--limit`
-(default 30, hard range 1–1000).
+All subcommands support `--json fields`, `--jq`, `--template`, and `-L/--limit`
+(default 30, hard range 1–1000). Date and number flags accept comparison
+syntax: `--created ">2024-01-01"`, `--stars ">100"`, `--reactions ">50"`,
+ranges like `--created 2024-01-01..2024-06-30`. For current flags, run
+`gh search <subcommand> --help`.
 
-```bash
-gh search code <query> [-R owner/repo] [--owner O] [--language L] \
-  [--filename F] [--extension E] [--match file|path] [--size KB-range]
-# JSON fields: path, repository, sha, textMatches, url
+`gh search repos` has no `--repo`; scope with `--owner`.
 
-gh search repos [<query>] [--owner O] [--language L] [--topic t1,t2] \
-  [--stars ">100"] [--sort stars|forks|updated|help-wanted-issues] \
-  [--archived=false] [--visibility public|private|internal]
-# no --repo flag here; use --owner
-
-gh search issues [<query>] [--repo R] [--owner O] [--author U] [--assignee U] \
-  [--label L] [--state open|closed] [--created "<date>"] [--include-prs] \
-  [--match title|body|comments] [--sort ...]
-
-gh search prs [<query>] [--repo R] [--author U] [--review-requested U] \
-  [--reviewed-by U] [--review none|required|approved|changes_requested] \
-  [--checks pending|success|failure] [--merged] [--merged-at "<date>"] \
-  [--draft] [-B base] [-H head] [--state open|closed]
-
-gh search commits [<query>] [--repo R] [--owner O] [--author U] \
-  [--committer U] [--author-date "<2022-02-01"] [--hash SHA] [--merge] \
-  [--sort author-date|committer-date]
-```
-
-Date and number flags accept comparison syntax: `--created ">2024-01-01"`,
-`--stars ">100"`, `--reactions ">50"`, ranges like `--created 2024-01-01..2024-06-30`.
+Issue search accepts `--search-type lexical|semantic|hybrid` (default
+`lexical`). Semantic and hybrid are issue-only, relevance-ranked (so `--sort`
+and `--order` cannot be used), return a single page of results, and are not
+available on GitHub Enterprise Server.
 
 ## Qualifier cheat sheet
 
@@ -88,8 +71,8 @@ gh search prs 'is:merged author:monalisa base:main'
 ## Hard limits
 
 - 1000 results max per query (`--limit` enforces 1–1000).
-- Query max 256 characters, at most 5 boolean operators (AND/OR/NOT), 5
-  nesting levels.
+- Queries cannot be longer than 256 characters (not including operators or
+  qualifiers), or use more than five `AND`, `OR`, or `NOT` operators.
 - To get more than 1000 items, split the query (e.g. by date range) or switch
   to a `list` command / REST list endpoint with `--paginate`.
 

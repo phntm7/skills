@@ -7,7 +7,7 @@ description: >
 
 # Surge CLI
 
-Last verified: 2026-07-14
+Last verified: 2026-09-03 (surge 0.44.1)
 
 Use Surge to publish directories of static HTML, CSS, JavaScript, and assets. It
 does not run application servers, server-side functions, or databases.
@@ -36,7 +36,7 @@ does not run application servers, server-side functions, or databases.
    `node_modules`, and `bower_components`; `.surgeignore` uses `.gitignore`
    syntax for anything else.
 4. Run `surge whoami`; use `surge login` if needed. For an existing project,
-   inspect `surge list <domain>` before changing it.
+   inspect `surge <domain> revs` and `surge <domain> config` before changing it.
 
 A deploy may contain at most 10,100 files and 450 MB.
 
@@ -62,7 +62,7 @@ preview:
 
 ```bash
 surge <output-directory> <domain> --preview -m "<candidate description>"
-surge list <domain>
+surge <domain> revs
 ```
 
 Share the printed revision URL, not the production URL. After approval, cut
@@ -79,13 +79,14 @@ page or route before reporting success.
 
 ```bash
 surge list                         # list projects
-surge list <domain>                # list revisions; live one is highlighted
+surge <domain> revs                # list revisions; live one is highlighted
 surge rollback <domain>            # serve the previous revision
 surge rollfore <domain>            # undo one rollback
 surge cutover <domain> <revision>  # serve an exact revision
 surge discard <domain> <revision>  # permanently delete one revision
-surge files <domain>               # list files currently served
-surge audit <domain>               # inspect CDN revision and certificate state
+surge <domain> debug status        # domain state: waiting on dns, securing, or live
+surge <domain> debug files         # list files in the live revision
+surge <domain> debug audit         # inspect CDN revision and certificate state
 surge teardown <domain>            # permanently remove the whole project
 ```
 
@@ -116,7 +117,7 @@ and CDN cache invalidation are automatic.
 Free includes unlimited projects and deploys, `.surge.sh` subdomains, custom
 domains, managed SSL, CDN delivery, clean URLs, revisions, and collaborators.
 `.surge.sh` domains use HTTPS automatically. For a custom domain that already
-points to Surge, `surge encrypt <domain>` provisions a free auto-renewed
+points to Surge, `surge <domain> debug encrypt` provisions a free auto-renewed
 certificate.
 
 Paid plans add `AUTH`, `ROUTER`, `CORS`, and user-supplied PEM certificates. If

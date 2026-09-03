@@ -1,44 +1,37 @@
 ---
 name: session-retro
 description: >
-  Use when retrospecting on concrete friction from the current session; it turns
-  tool failures, confusing instructions, and environment surprises into actionable improvements.
+  Retrospect friction from the current agent session — tools, docs, codebase,
+  environment, task wording, or agent missteps — and propose prioritized prose
+  fixes without editing.
 ---
 
 # Session Retro
 
-Conduct an honest retrospective of the current session from the agent's point
-of view. The deliverable is a short friction report with concrete, prioritized
+The deliverable is a short friction report with concrete, prioritized
 fixes — not applied edits. The goal is to make the codebase, docs, and
 instructions easier for the next agent (or the next session) to work in.
 
 ## Ground Rules
 
-- **Only report friction that actually happened this session.** Do not invent
-  plausible-sounding issues to appear thorough. "Nothing notable" is a valid
-  answer for a category, and a short honest retro beats a padded one.
-- **Include minor items.** Things too small to mention mid-task — a doc line
-  that was slightly stale, a command that needed one retry, wording that took
-  a second read — are exactly what this retro exists to capture.
-- **No blame framing.** Describe what slowed the work down and how to remove
-  it, whether the cause was the repo, the tooling, the instructions, or the
-  agent's own missteps. Own the agent-side mistakes plainly.
-- **Report first, edit only on approval.** Propose changes as diffs-in-prose
-  (which file, which rule, what wording); apply them only if the user asks.
+- Ground each finding in observed session evidence; describe causes without
+  blame, including the agent's own missteps.
+- Include minor items: a slightly stale doc line, a command that needed one
+  retry, wording that took a second read — the small stuff is exactly what
+  this retro exists to capture.
+- Return proposed prose diffs (which file, which rule, what wording); apply
+  edits only after approval.
 
 ## Procedure
 
-1. **Sweep the session** for friction in each category below. Re-read your own
-   tool-call history mentally; do not skip categories because the session felt
-   smooth.
-2. **Diagnose each item**: what happened, what caused it, how much effort it
-   cost.
+1. **Sweep the session**: review the transcript and tool results, and record
+   each of the six category labels below with an observed event or "none".
+2. **Diagnose each finding** as what happened → cause → effort → fix, where
+   effort is what the friction cost (retries, tokens, time).
 3. **Attach a concrete fix** to every item that has one: a specific file to
    edit, a rule to add to `AGENTS.md`/`CLAUDE.md`, a script to add, a rename,
    a doc line to correct. A finding without an actionable fix goes in "final
    thoughts" instead.
-4. **Prioritize**: rank the fixes by leverage for future sessions, and say
-   which ones you would apply first.
 
 ## Friction Categories
 
@@ -62,8 +55,9 @@ instructions easier for the next agent (or the next session) to work in.
 
 Produce a compact report in chat:
 
-1. Findings grouped by category, each with: what happened → cause → proposed
-   fix. Skip categories with nothing to report, or fold them into one line.
+1. Findings grouped by category, each with: what happened → cause → effort →
+   proposed fix. Fold empty categories into one compact line:
+   `No findings in: <categories>`.
 2. **Final thoughts**: observations worth raising that have no direct fix.
 3. **Recommended next changes**: a ranked shortlist (1–5 items) of the fixes
    with the highest leverage, phrased so the user can approve them one by one.
