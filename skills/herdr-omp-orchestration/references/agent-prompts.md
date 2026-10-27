@@ -18,7 +18,7 @@ Rules:
   - React changes → `vercel-composition-patterns` AND `vercel-react-best-practices`.
   - Frontend work in a project that uses shadcn (has components.json or a shadcn setup) → `shadcn`.
   Confirm each skill is available (omp resolves skills by name); if a required one is missing, say so and proceed with repo conventions.
-- For larger tasks, fan out to subagents (the `task` tool) to parallelize independent work. Your subagents are pinned to your own model, so use them freely.
+- For larger tasks, fan out to subagents (the `task` tool) to parallelize independent work. The overlay pins the default task role; named definitions can override it. Select matching-family definitions, verify actual resolved models, and keep fan-out within provider headroom (serialize GLM; no wide MiMo fan-out).
 - Scope: this issue only. Match existing patterns; no drive-by refactors.
 - Branch is already checked out here: feature/{slug}. Commit per the repo's conventions.
 - Before handoff run {verify_cmd} and get it green.

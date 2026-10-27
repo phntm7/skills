@@ -23,7 +23,7 @@ You are the orchestrator, not the implementer.
 **A model never reviews its own work — reviewer and implementer are different model families.**
 
 - Codex implements → a claude reviewer pane reviews, and vice versa.
-- pi models (DeepSeek, GLM, Grok) are three further distinct families: a pi implementer is reviewed by claude, codex, or a *different pi family*; a pi reviewer may review claude or codex work. DeepSeek Pro and Flash are the same family and must never review each other. `deepseek-v4-flash` is the budget reviewer of choice; reserve `grok-4.6` for cases where its stronger review is worth the scarce weekly pool.
+- pi models (DeepSeek, GLM, Grok) are three further distinct families: a pi implementer is reviewed by claude, codex, or a *different pi family*; a pi reviewer may review claude or codex work. DeepSeek Pro and Flash are the same family and must never review each other. `deepseek-v4.1-flash` is the budget reviewer of choice; reserve `grok-4.6` for cases where its stronger review is worth the scarce weekly pool.
 
 The reviewer runs in the same yolo mode as the implementer — no sandbox. The don't-touch-the-code discipline is contractual, not enforced: the reviewer prompt forbids edits, commits, and pushes, and the oid-pinned merge gate catches any unreviewed change regardless of who made it. Claude-side fan-out stays in-family automatically (Claude Code subagents inherit their parent's model).
 
@@ -33,8 +33,8 @@ The reviewer runs in the same yolo mode as the implementer — no sandbox. The d
 2. Identify your own pane — never via `"focused":true`, which another client can own. Resolve the id into a variable first, then rename: `pane="${HERDR_PANE_ID:-$(herdr pane current | jq -r .result.pane.pane_id)}"; herdr agent rename "$pane" "orch"` (adjust the jq path to the actual output on first use). Self-address by the `orch` label afterwards; pane ids compact when panes close. Agent names must match `^[a-z][a-z0-9_-]{0,31}$` — lowercase only.
 3. Confirm `gh auth status` works (you merge; agents post PR comments).
 4. Confirm the quota gate: `codexbar usage --json --provider opencodego` returns usage (fast local probe). If codexbar is missing, fall back to `cclimits --json --claude --codex` — it covers claude/codex only, so pi-side quotas (opencode-go, z.ai, grok) run unmeasured (see quota section).
-5. Confirm the agent CLIs you will dispatch: `claude --version`, `codex --version`, `pi --version`. Verified against claude 2.1.228, codex-cli 0.147.0, pi 0.84.1, codexbar 0.49.4, herdr 0.8.0 — if versions differ significantly, re-check flags with `--help` before relying on them.
-6. Spot-check the global skill set agents depend on: `ls ~/.agents/skills` should include `implement`, `code-review`, `diagnosing-bugs`, `tdd`, `codebase-design` (the Matt Pocock set) plus `deep-code-review`. If missing, tell the operator before dispatching.
+5. Confirm the agent CLIs you will dispatch: `claude --version`, `codex --version`, `pi --version`. Verified against claude 2.1.311, codex-cli 0.164.0, pi 1.4.0, codexbar 0.81.0, herdr 0.9.5 (2026-10-27) — if versions differ significantly, re-check flags with `--help` before relying on them.
+6. List the skills agents can load: `ls ~/.agents/skills` plus the repo's `.agents/skills`. Spawn prompts may route only to skills that exist there (for example `implement`, `code-review`, `diagnosing-bugs`, `tdd`, `codebase-design`, `deep-code-review`); for anything missing, keep the prompt self-contained and tell the operator once.
 7. **Stale-worktree sweep.** `herdr worktree list --cwd <repo-root> --json`; for any worktree whose PR is **merged** (`gh pr list --head <branch> --state all`), tear it down now (worktree remove + branch delete). Closed-but-unmerged PRs may be intentionally retained — surface those to the operator instead of deleting. Repeat this sweep before ending the session — never leave stale worktrees behind.
 
 ## Inputs
@@ -53,12 +53,12 @@ Route by problem character, not just size. Benchmark data (DeepSWE v1.1) and ope
 
 | Task character | Implementer | Reviewer |
 |---|---|---|
-| Easy, well-specified, mechanical | codex `gpt-5.6-luna` @ `max` | claude `opus` @ `high` |
-| Standard feature work, broad multi-file changes | claude `opus` @ `high` | codex `gpt-5.6-sol` @ `xhigh` |
-| Surgical/precision changes in delicate code | codex `gpt-5.6-sol` @ `high`–`xhigh` | claude `opus` @ `xhigh` |
+| Easy, well-specified, mechanical | codex `gpt-6-luna` @ `max`, or pi `zai/glm-5.3-flash` @ `high` | claude `opus` @ `high` |
+| Standard feature work, broad multi-file changes | claude `opus` @ `high` | codex `gpt-6.1-sol` @ `xhigh` |
+| Surgical/precision changes in delicate code | codex `gpt-6.1-sol` @ `high`–`xhigh` | claude `opus` @ `xhigh` |
 | Hard but well-understood (large refactors) | claude `opus` @ `xhigh` or codex `sol` @ `xhigh` | opposite family @ `xhigh`+ |
 | Hard and poorly understood — deep analysis, gnarly debugging | claude `fable` @ `xhigh` | codex `sol` @ `max` |
-| Bulk well-specified work, or claude/codex quota is tight | pi `deepseek-v4-flash` @ `max` by default; use `deepseek-v4-pro` @ `max` only when its possible quality gain is worth the smaller allowance; reserve `grok-4.6` (vendor-default `high`) for work where speed/quality matters enough to spend its weekly pool | any other family — never DeepSeek reviewing DeepSeek |
+| Bulk well-specified work, or claude/codex quota is tight | pi `deepseek-v4.1-flash` @ `max` by default; use `deepseek-v4-pro` @ `max` only when its possible quality gain is worth the smaller allowance; reserve `grok-4.6` (vendor-default `high`) for work where speed/quality matters enough to spend its weekly pool | any other family — never DeepSeek reviewing DeepSeek |
 
 Qualitative traits the benchmark doesn't show (operator-verified):
 
@@ -66,8 +66,9 @@ Qualitative traits the benchmark doesn't show (operator-verified):
 - **opus** is a very good default for most claude-side work. Rare edge cases (scope creep, test bloat, occasional refusal) are handled by the universal YAGNI prompt line and the reviewer gate — no special guardrails.
 - **sol** is focused and meticulous: best for surgical changes and the most reliable reviewer.
 - **luna** at `max` is the cheap codex-side workhorse for well-specified tasks.
-- **deepseek-v4-flash** at `max` is the default pi implementer and reviewer: Pro's higher benchmark point estimate is not statistically separated, while Flash has far more OpenCode Go allowance. Use **deepseek-v4-pro** only when retry tolerance or operator experience favors it.
-- **grok-4.6** is a fast, strong pi option, but its shared weekly pool burns quickly. Spend it selectively and route routine work to Flash. The **z.ai lane remains parked** until GLM-5.3 stops rate-limiting in operator tests.
+- **deepseek-v4.1-flash** at `max` is the default pi implementer and reviewer: Pro's higher benchmark point estimate is not statistically separated, while Flash has far more OpenCode Go allowance. Use **deepseek-v4-pro** only when retry tolerance or operator experience favors it.
+- **grok-4.6** is a fast, strong pi option, but its shared weekly pool burns quickly. Spend it selectively and route routine work to Flash.
+- **glm-5.3-flash** (z.ai plan) is precise and a strong default for small and medium tasks. All GLM work shares one z.ai plan cap: run one GLM pane at a time.
 - Re-run the `coding-benchmarks` skill when revisiting model choices; do not preserve leaderboard ledgers here.
 
 Hard rules (benchmark cliffs):
@@ -75,7 +76,7 @@ Hard rules (benchmark cliffs):
 - **luna: `max` only.** It collapses below that (`high` 44%, `medium` 11%, `low` 2% pass@1). Never dispatch luna below `max`.
 - **fable: `xhigh`, never `max`** (`max` adds nothing over `xhigh` at +61% cost).
 - **sol: never `low`;** its sweet spot is `high`, escalate to `xhigh`/`max` for hard work.
-- **DeepSeek: `max` only.** **Grok: vendor-default `high`.** Pi 0.84.1 cannot transmit Grok effort, so its `:high` suffix is documentary and `:xhigh` would not escalate it. See [references/agent-clis.md](references/agent-clis.md) for launch details.
+- **DeepSeek: `max` only.** **Grok: `high`** by quota policy; Pi transmits the suffix, so `:xhigh` would really request xhigh and burn the weekly pool faster. See [references/agent-clis.md](references/agent-clis.md) for launch details.
 
 Before assigning a model, check its quota window; if it lacks headroom, use another family (keeping the pairing cross-family) or wait (see quota section).
 
@@ -98,7 +99,7 @@ Before creating anything, **check for existing state** (idempotency/resume): `gh
 3. **Implement.** Deliver the task with `herdr agent prompt <target> "<text>" --wait --timeout <ms>` — no explicit `--until`: the default matches `idle`, `done`, or `blocked`, and you classify the settled state afterwards with `herdr agent get`. For long prompts write a scratch file and send a one-liner pointing at it. The implementer works to acceptance, follows the universal YAGNI principle, runs the repo verify command, and opens a READY PR.
 4. **Find the PR deterministically:** `gh pr list --head feature/<slug> --json number,url,state` — never scrape the pane. If no PR exists and the agent is idle: nudge once with a completion prompt; if it still produces no PR, read the pane and escalate.
 5. **Reviewer pane.** On first review, split the implementer's pane and start the cross-family reviewer beside it: `herdr pane split --pane <impl-pane> --direction right --cwd <wt-path>`, then `herdr agent start "r<n>" --kind <other-family> --pane <new-pane> -- <model/effort/yolo args>`. This pane persists for the issue's whole life — every re-review goes to it.
-6. **Review.** First record the commit under review: `gh pr view <N> --json headRefOid` → `<review-oid>`, and put it in the review prompt (the reviewer states it in its Verification section). Deliver the review prompt to the reviewer pane with `herdr agent prompt r<n> ... --wait`. The reviewer uses the `code-review` skill (`deep-code-review` for hard-tier changes), also weighs any third-party bot reviews already on the PR, and posts the PR comment itself. The comment ends `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The only gate is a verdict that attests `<review-oid>` while the PR head still equals it** — if the head moved during review, the verdict is void; re-review. Never `gh pr review --approve` (same GitHub account; self-approval is rejected).
+6. **Review.** First record the commit under review: `gh pr view <N> --json headRefOid` → `<review-oid>`, and put it in the review prompt (the reviewer states it in its Verification section). Deliver the review prompt to the reviewer pane with `herdr agent prompt r<n> ... --wait`. The reviewer uses the `code-review` skill when installed (`deep-code-review` for hard-tier changes, if installed), also weighs any third-party bot reviews already on the PR, and posts the PR comment itself. The comment ends `VERDICT: LGTM` or `VERDICT: BLOCKING`. **The only gate is a verdict that attests `<review-oid>` while the PR head still equals it** — if the head moved during review, the verdict is void; re-review. Never `gh pr review --approve` (same GitHub account; self-approval is rejected).
 7. **Loop.** Act on the verdict line and unresolved actionable items:
    - `BLOCKING` → send the **same implementer pane** a fix prompt (address every finding — the reviewer's, third-party review bots', and CI's — push `--force-with-lease`, reply on the PR), then the **same reviewer pane** a re-review prompt with a **freshly captured** `<review-oid>` — every push voids the prior oid. Cap: 3 cycles, then escalate to the operator.
    - `LGTM` but actionable non-blocking items remain → one fix turn for them, then a light reviewer re-check (not a full re-review); explicitly waived trivia gets a waiver note on the PR instead of silence.
@@ -107,7 +108,7 @@ Before creating anything, **check for existing state** (idempotency/resume): `gh
 9. **Merge.** `gh pr view <N> --json state,mergeable,mergeStateStatus`. Route by state — not everything means "rebase":
    - `BEHIND`/`DIRTY` → rebase prompt to the implementer. Any rebase changes the head oid, so get at least a light re-verdict after (a *conflicted* rebase gets a full re-review — conflict resolution is a code change).
    - `UNSTABLE` (mergeable, checks pending/failing) → wait for CI or dispatch a fix; `BLOCKED` (required review/branch protection) → check what blocks; draft → have the implementer mark it ready; `UNKNOWN` → re-check once before acting.
-   - Open/`MERGEABLE`/`CLEAN` (or `HAS_HOOKS`) → `gh pr merge <N> --squash --match-head-commit <review-oid>` (no `--delete-branch`; the branch is checked out in the worktree). The `--match-head-commit` pin makes a push between gate and merge fail safely instead of merging unreviewed code.
+   - Open/`MERGEABLE`/`CLEAN` (or `HAS_HOOKS`) → if the repo documents its own gated merge procedure (for example a `scripts/merge-pr.sh` named in its `AGENTS.md`), follow it and pin it to `<review-oid>`. Otherwise `gh pr merge <N> --squash --match-head-commit <review-oid>`. Never pass `--delete-branch`; the branch is checked out in the worktree. The oid pin makes a push between gate and merge fail safely instead of merging unreviewed code.
 10. **Teardown.** Exit both agents (`/exit` for claude, `/quit` for codex and pi), wait for their panes to return to a shell, then `herdr worktree remove --workspace <ws> --force` (removes the checkout, closes the workspace and both panes) and delete the branch.
 
 ### Active supervision
@@ -122,7 +123,7 @@ Every implementer spawn prompt carries one shared line — and only one; modern 
 
 ## Use installed skills, don't duplicate them
 
-Projects using this orchestrator rely on the globally installed Matt Pocock skill set (`~/.agents/skills`: `implement`, `tdd`, `code-review`, `diagnosing-bugs`, `codebase-design`, `design-an-interface`, `domain-modeling`, `improve-codebase-architecture`, `research`, `triage`, `wayfinder`, `handoff`), available to both claude and codex agents. Spawn prompts route agents to the relevant skills by name instead of restating their content — the prompt skeletons in [references/agent-prompts.md](references/agent-prompts.md) carry the routing lines. Never paste workflow guidance into a prompt that an installed skill already covers.
+When workflow skills are installed (preflight step 6), for example the Matt Pocock set (`implement`, `tdd`, `code-review`, `diagnosing-bugs`, `codebase-design`, `design-an-interface`, `domain-modeling`, `research`, `wayfinder`), spawn prompts route agents to them by name instead of restating their content; the prompt skeletons in [references/agent-prompts.md](references/agent-prompts.md) carry the routing lines. Never paste workflow guidance that an installed skill already covers. Drop routing lines for skills that are not installed and give plain instructions instead.
 
 ## Concurrency
 
@@ -130,7 +131,7 @@ Run at most **2 issues concurrently** (up to 4 agent panes: one implementer + on
 
 ## Quota headroom (all subscriptions are shared — always leave headroom)
 
-The operator uses these subscriptions elsewhere; leave headroom. Active routes are **codex** (weekly), **claude** (5h plus weekly), **opencode-go** (5h, weekly, monthly), and **grok** (one shared weekly pool). The parked z.ai details live in [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md).
+The operator uses these subscriptions elsewhere; leave headroom. Active routes are **codex** (weekly), **claude** (5h plus weekly), **opencode-go** (5h, weekly, monthly), **grok** (one shared weekly pool), and **z.ai** (one shared GLM cap). z.ai details live in [references/lifecycle-and-quota.md](references/lifecycle-and-quota.md).
 
 The gate is by window length, uniform across providers:
 

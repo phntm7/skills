@@ -43,14 +43,14 @@ Custom providers live in `~/.omp/agent/models.yml` under `providers`:
 
 ```yaml
 providers:
-  novita:
-    baseUrl: https://api.novita.ai/openai
+  example-provider:
+    baseUrl: https://example.com/v1
     api: openai-completions
-    apiKey: NOVITA_API_KEY
+    apiKey: EXAMPLE_PROVIDER_API_KEY
     authHeader: true
     models:
-      - id: minimax/minimax-m3
-        name: MiniMax-M3 (Novita)
+      - id: example-model
+        name: Example Model
         contextWindow: 1000000
         maxTokens: 131072
 ```
@@ -68,7 +68,7 @@ providers:
 | `disableStrictTools` | Set `true` for Anthropic-fronted gateways that reject the `strict` tool field. |
 | `models` | List of model definitions. Each item requires `id` and positive `contextWindow`/`maxTokens`. |
 
-*Model Selectors:* Model selectors are `<provider-id>/<model-id>`. For nested IDs like `minimax/minimax-m3` on `novita`, the exact selector is `novita/minimax/minimax-m3`.
+*Model Selectors:* Use exact `<provider-id>/<model-id>` values from the active config and agent definitions. The custom endpoint above is a schema illustration, not a configured subscription. Model IDs may contain slashes; split only at the first slash.
 
 ## 4. Built-in Model Roles
 
@@ -88,13 +88,13 @@ OMP uses role aliases to decouple workflows from concrete models. The built-in r
 
 *(Note: The legacy `designer` role was removed in v18.1.5).*
 
-Configure roles in `config.yml`:
+Read the active `config.yml` before selecting roles. This Mac currently uses these subscription-backed selectors (examples, not instructions to overwrite config):
 ```yaml
 modelRoles:
-  default: anthropic/claude-opus-5
-  smol: openai/gpt-5.6-luna
+  default: anthropic/claude-opus-5-5
+  smol: opencode-go/deepseek-v4.1-flash
   slow: anthropic/claude-fable-5-1
-  tiny: deepseek/deepseek-v4-flash
+  task: openai-codex/gpt-6.1-sol
 ```
 
 ## 5. Model Discovery and Benchmarking
@@ -104,7 +104,7 @@ modelRoles:
 omp models ls
 
 # Show models for a single provider
-omp models novita
+omp models openai-codex
 
 # Search model IDs or names by regex/pattern
 omp models find sonnet
@@ -116,7 +116,7 @@ omp models refresh
 omp models --json
 # Benchmark generation throughput (tokens/s) and time-to-first-token (TTFT)
 omp bench opus sonnet --runs 5
-omp bench openai/gpt-5.6 --cache --json
+omp bench openai-codex/gpt-6.1-sol --cache --json
 ```
 
 *Note:* `omp bench` is a separate top-level utility command, not a subcommand under `omp models`.

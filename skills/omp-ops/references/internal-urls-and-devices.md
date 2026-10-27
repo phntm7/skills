@@ -7,7 +7,7 @@ Use this reference to understand and use Oh My Pi's internal URL router (`scheme
 OMP's `read` and `write` tools route string paths starting with registered schemes to internal handlers (`packages/coding-agent/src/internal-urls/router.ts`).
 
 - Handlers support line-range selectors (e.g. `artifact://3:50-100` or `:raw`).
-- Writable schemes accept direct writes via the `write` tool (`local://`, `ssh://`, `vault://`, `xd://`).
+- Writable schemes accept direct writes via the `write` tool (`local://`, `ssh://`, `vault://`, `agent://`, `proc://`, `xd://`).
 - Read selectors paginate large results to keep context bounded.
 
 ## 2. Agent and Session URIs
@@ -17,11 +17,11 @@ Reads `.md` output artifacts produced when a subagent finishes:
 
 ```
 agent://<id>            Full output content of subagent <id>
-agent://<id>/<child>    Nested subagent output (resolves <id>.<child>)
+agent://<id>.<child>    Nested subagent output (dot-qualified ID)
 agent://<id>/<path>     Extract JSON field path from the output
 agent://<id>?q=<query>  jq-style query extraction from output JSON
 ```
-*Notes:* `agent://` is immutable. Slash resolution checks for child subagents first, falling back to JSON path extraction.
+*Notes:* Reads return the latest published output; follow-up turns can supersede it. Before output exists, reads return status/progress. Slash suffixes always extract JSON fields/indexes; nested agents use dot-qualified IDs. Write non-empty message text to `agent://<id>` to steer or follow up; `agent://all` broadcasts to visible live peers. Use roster IDs from `history://` verbatim; reads do not send messages.
 
 ### `history://` — Agent Transcripts
 Renders agent conversation transcripts as concise Markdown:
@@ -31,6 +31,15 @@ history://              Index of all agents (id, status, kind, last active)
 history://<agentId>     Full transcript of agent <agentId>
 ```
 *Notes:* Works for live, idle, and parked agents, as well as unregistered sessions surviving on disk. Case-insensitive.
+
+### `proc://` — Background Jobs and Supervised Services
+
+```
+proc://                List caller-visible jobs, agents, and project services
+proc://<id>           Inspect status and available output/logs
+```
+
+Reads do not consume async delivery. Start a service with `bash(command="bun run dev", name="web", ready={"port":3000})`. Write stdin to `proc://web`; empty content sends Enter. `write(path="proc://<id>/kill")` cancels a job/owned agent or stops a service, with no content required. Service-only `/mode` accepts `persist`, `session`, or `detached`. Use `wait()` with no arguments when there is no useful independent work; results and messages otherwise arrive automatically.
 
 ### `artifact://` — Spilled Tool Outputs
 When tool results exceed in-memory buffer caps, OMP spills them to session artifacts and returns `artifact://<id>`:
@@ -95,10 +104,10 @@ vault://<vault>?op=search&q=<query>
 ```
 *Notes:* Plain note paths accept writes via `write`.
 ### `omp://` — Bundled First-Party Documentation
-OMP ships 130 offline, version-matched documentation files readable directly via `read`:
+OMP 18.13.0 exposes 134 offline, version-matched documentation files via `read` (or shell `omp read`). Re-read the index after upgrades:
 
 ```
-omp://                  Index listing all 130 available documentation files
+omp://                  Index listing all 134 available documentation files
 omp://<topic>.md        Read specific topic document (.md suffix required)
 ```
 *Key topics:* `omp://approval-mode.md`, `omp://prewalk.md`, `omp://magic-keywords.md`, `omp://models.md`, `omp://providers.md`, `omp://secrets.md`, `omp://task-agent-discovery.md`, `omp://agent-hub.md`, `omp://compaction.md`.

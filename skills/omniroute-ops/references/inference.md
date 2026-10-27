@@ -117,13 +117,13 @@ wscat -c "ws://<host>:20128/v1/responses?api_key=<OMNIROUTE_API_KEY>"
 First frame must be `response.create`:
 
 ```json
-{ "type": "response.create", "model": "gpt-5.5", "input": [{ "role": "user", "content": "hi" }] }
+{ "type": "response.create", "model": "gpt-6.1-sol", "input": [{ "role": "user", "content": "hi" }] }
 ```
 
 Rules:
 
 - This bridge is wired exclusively to `codex`; non-codex models are rejected with `codex_ws_provider_required`.
-- Use the bare ChatGPT/Codex model id, for example `gpt-5.5`, not `codex/gpt-5.5`. The Codex CLI validates WebSocket model names client-side and rejects provider-prefixed IDs.
+- Use the bare ChatGPT/Codex model id, for example `gpt-6.1-sol`, not `codex/gpt-6.1-sol`. The Codex CLI validates WebSocket model names client-side and rejects provider-prefixed IDs.
 - Accepted bridge paths are `/v1/responses`, `/responses`, and `/api/v1/responses`.
 - For quota-share routing, the API reference documents `model: "qtSd/<group>/codex/<model>"`.
 

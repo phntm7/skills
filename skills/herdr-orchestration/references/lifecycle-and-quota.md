@@ -57,7 +57,7 @@ The reset-imminent exception exists because burning the tail of a window that's 
 
 **Allowance-aware routing:** OpenCode Go currently gives DeepSeek Flash a $60 monthly model allowance plus a temporary 2×-usage benefit; Pro gets $15. Prefer Flash for routine bulk work and verify the live catalog before relying on the promotion. Grok's shared weekly pool burns much faster: if its recent pace would exhaust the pool before reset, reserve it even above the 15% floor. CodexBar may omit Grok's `windowMinutes`; classify that result as weekly.
 
-**Parked z.ai lane:** Lite provides 2,000 credits/5h and 10,000/week, with half-rate usage outside 14:00–18:00 UTC+8 weekdays. Do not dispatch it while GLM-5.2/5.1 auto-route to the unstable GLM-5.3 endpoint.
+**z.ai lane:** check the current plan's credits with `codexbar usage --json --provider zai` before relying on it. All GLM work shares one cap, so run one GLM pane at a time.
 
 Gate at three points, using `codexbar usage --json --provider <p>` for the family you're about to spend (shape, latencies, and the cclimits fallback in [agent-clis.md](agent-clis.md); codexbar has no cache — reuse this turn's results for repeated checks):
 

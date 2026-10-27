@@ -19,7 +19,7 @@ You are the orchestrator, not the implementer.
 
 ## The one rule that shapes everything
 
-**A model never reviews its own work.** The implementer and reviewer must be different model families, and — because omp's `task` subagent defaults to its own model — the reviewer's subagent fan-out must also stay on the reviewer's family. You enforce this by launching each omp agent with a per-process `--config` overlay that pins `modelRoles.{default,task,slow,plan}` to that agent's assigned model (see [references/herdr-omp-cli.md](references/herdr-omp-cli.md)). Without the overlay, `deep-code-review`'s subagents silently run on the implementer's model and the review is worthless.
+**A model never reviews its own work.** The implementer and reviewer must be different model families, and — because this Mac explicitly configures `modelRoles.task` independently of the main session's `--model` — the reviewer's subagent fan-out must also stay on the reviewer's family. You enforce this by launching each omp agent with a per-process `--config` overlay that pins `modelRoles.{default,task,slow,plan}` to that agent's assigned model (see [references/herdr-omp-cli.md](references/herdr-omp-cli.md)). The overlay covers default/role-routed workers; named definitions with concrete model pins and fallback chains still need inspection to ensure every reviewer resolves to the assigned family.
 
 ## Preflight (once per session)
 
@@ -27,7 +27,7 @@ You are the orchestrator, not the implementer.
 2. Identify your own workspace: `herdr pane list` → find the pane with `"focused":true`; its `workspace_id` (e.g. `w9`) is where every issue tab goes. Then rename yourself for stable self-scheduling: `herdr agent rename <your-pane> "orch"` — herdr pane ids compact when panes close, so address your own pane by the `orch` label, not a stored id.
 3. Confirm `gh auth status` works (you merge and the agents post PR comments).
 4. Confirm `omp usage --json` returns reports. This is your quota gate; there is no separate script.
-5. Discover available models: `omp models find gpt-5.5`, `omp models find opus`, `omp models find glm-5.2`. Provider ids vary by machine — never hardcode them; read them here.
+5. Read `~/.omp/agent/config.yml` (`modelRoles`, `enabledModels`, `modelProviderOrder`) and `~/.omp/agent/agents/*.md` before selecting lanes. Confirm candidates with `omp models find gpt-6.1-sol`, `omp models find gpt-6-astra`, `omp models find claude-opus-5-5`, or `omp models find glm-5.3-flash`. Use configured subscription selectors; catalog availability alone does not prove a funded route.
 
 ## Inputs
 
@@ -43,12 +43,12 @@ If scope, acceptance location, or task order is genuinely ambiguous and unresolv
 
 Pick per issue, always honoring quota headroom (below) and the opposite-family rule:
 
-- **Easy** issue (small, mechanical, low-risk) → implement with `glm-5.2` (via a discovered subscription provider); review with a strong opposite family.
-- **Medium/large** issue → implement with a strong model (`openai-codex/gpt-5.5` or `anthropic/claude-opus-4-8`); review with the *other* strong family.
-- Families in play: `openai-codex` (gpt-5.5), `anthropic` (opus-4-8), `glm`/zhipu (glm-5.2). Implementer family ≠ reviewer family, every time.
-- **Subscription selectors only — never API-key providers.** Use `openai-codex/gpt-5.5` (Codex subscription), NOT `openai/gpt-5.5` (that is the pay-per-token API key: it bypasses subscription-quota tracking and spends real money). Likewise `anthropic/claude-opus-4-8` and `glm-5.2` via a discovered subscription provider (`opencode-go`, `cline-pass`, `neuralwatt`, `zai`) — never an API-key equivalent. Only dispatch a model that `omp usage` reports a subscription window for.
-- **Subagents run the agent's own model.** Each agent's `--config` overlay pins `modelRoles.task` to its assigned model, so any subagent it spawns runs the same subscription model and correct family — not omp's default `task` model. Instruct the implementer to fan out to subagents for larger tasks. Caveat: fan-out multiplies burn on that one subscription, so when the chosen model's window is already >50% used, tell it to stay single-agent or fan out narrowly to protect the 25% headroom.
-- Thinking: `high` by default; `xhigh` for large refactors or deep reviews.
+- **Easy** issue (small, mechanical, low-risk) → implement with `zai/glm-5.3-flash` (the active z.ai plan; serialize GLM jobs); review with a strong opposite family.
+- **Medium/large** issue → implement with a strong model (`openai-codex/gpt-6.1-sol`, `openai-codex/gpt-6-astra`, or `anthropic/claude-opus-5-5`); review with the *other* strong family.
+- Families in play: GPT (Sol/Astra/Luna via `openai-codex`), Claude (Opus 5.5/Fable 5.1 via `anthropic`), GLM (5.3/5.3-Flash via `zai`); configured DeepSeek, MiMo, and Muse lanes provide additional distinct families. Implementer family ≠ reviewer family, every time.
+- **Subscription selectors only — never API-key providers.** Use `openai-codex` for GPT, `anthropic` for Claude, `zai` for GLM, `opencode-go` for DeepSeek/Muse, and `xiaomi-token-plan-sgp` for MiMo when those routes remain configured and funded. Never substitute a paid per-token API route. Read exact model IDs from config/agent files and check `omp usage`; handle an unmeasured plan by the quota rule below.
+- **Subagents run the agent's own model.** Each agent's `--config` overlay pins the default `modelRoles.task` route. Explicit model pins in named agent definitions or `task.agentModelOverrides` take precedence: choose matching-family definitions and verify actual resolved models, including provider fallback, before accepting a review. Instruct the implementer to fan out to subagents for larger tasks. Caveat: fan-out multiplies burn on that one subscription, so when the chosen model's window is already >50% used, tell it to stay single-agent or fan out narrowly to protect the 25% headroom.
+- Thinking: use the configured agent's tuned level. Opus 5.5/Fable 5.1 use `high` (docs may use `medium`), Sol uses `high`, Luna uses `max`, and Astra uses `high` for implementation/review (`plan-astra` uses `xhigh`). Serialize all GLM lanes across issues; avoid wide MiMo fan-out across their shared Xiaomi pool.
 
 Before assigning a model, check its quota; if it lacks headroom, choose another family or wait (see quota section).
 

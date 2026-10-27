@@ -84,7 +84,7 @@ herdr agent start "R<n>" --tab <tab-id> --split right --cwd <wt-path> --no-focus
 
 ## The model overlay (enforces opposite-model review)
 
-omp's `task` subagent uses `modelRoles.task`; `--model` alone does **not** change it. Since implementer and reviewer share one worktree, project `.omp/config.yml` cannot differentiate them — use a **per-process `--config` overlay** (highest precedence except runtime flags, never persisted). Write one overlay per agent before launch:
+When `modelRoles.task` is explicitly set (as on this Mac), `--model` alone does **not** change that task route. When unset, the task role inherits the session model selected by `--model`. Since implementer and reviewer share one worktree, project `.omp/config.yml` cannot differentiate them — use a **per-process `--config` overlay** (highest precedence except runtime flags, never persisted). Write one overlay per agent before launch:
 
 ```bash
 cat > <impl-overlay> <<'YAML'
@@ -99,7 +99,7 @@ tools:
 YAML
 ```
 
-Do the same with `<rev-model>` for the reviewer's overlay. This keeps every subagent (including `deep-code-review`'s fan-out) on that agent's own family, and lets the implementer fan out to subagents for larger tasks without leaving the subscription. Selectors are exact `<provider>/<model>` (model ids may contain `/`, e.g. `cline-pass/cline-pass/glm-5.2`). Use **subscription** providers only — `openai-codex/gpt-5.5`, never the `openai/gpt-5.5` API key. Put overlays in a temp dir; delete them at teardown.
+Do the same with `<rev-model>` for the reviewer's overlay. This sets the default/role-routed task model. A named agent's explicit model pin or `task.agentModelOverrides` can override it; use matching-family definitions and inspect resolved models/fallbacks for every reviewer. Selectors are exact `<provider>/<model>` (e.g. `zai/glm-5.3-flash`; model ids may also contain `/`). Use **subscription** providers from the active config — for example `openai-codex/gpt-6.1-sol`, `anthropic/claude-opus-5-5`, or `zai/glm-5.3-flash`; do not substitute a paid API route. Put overlays in a temp dir; delete them at teardown.
 
 ## Drive and observe an agent
 

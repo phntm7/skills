@@ -2,13 +2,13 @@
 name: omp-ops
 description: >
   Use when configuring Oh My Pi (`omp`) settings, model providers, and credentials, running
-  headless or non-interactive sessions, delegating via subagents and hub, resolving internal
-  URLs, or controlling cost-saving handoffs (Prewalk, Plan-yolo).
+  headless or non-interactive sessions, delegating via subagents, messaging peers,
+  supervising jobs/services, resolving internal URLs, or controlling cost-saving handoffs (Prewalk, Plan-yolo).
 ---
 
 # OMP Ops
 
-Operate Oh My Pi (`omp`) safely as a terminal AI coding agent CLI: configure settings, manage model providers and credentials, run headless non-interactive sessions (e.g. external reviews), delegate across subagents, supervise long-running processes via `hub`, resolve internal `scheme://` URLs, and control model handoffs.
+Operate Oh My Pi (`omp`) safely as a terminal AI coding agent CLI: configure settings, manage model providers and credentials, run headless non-interactive sessions (e.g. external reviews), delegate across subagents, supervise jobs and long-running services via `proc://` and named `bash` calls, resolve internal `scheme://` URLs, and control model handoffs.
 
 ## What OMP Is
 
@@ -35,8 +35,8 @@ Common CLI flags:
 ## Inviolable Operating Rules
 
 1. **Verify active agent root first**: Run `omp config path` before editing configuration files. Global settings live in that directory (`config.yml`, `models.yml`).
-2. **Use exact model selectors**: Always pass `<provider-id>/<model-id>` in automation (e.g. `openai/gpt-5.6`, `novita/minimax/minimax-m3`).
-3. **Use native internal URLs and virtual devices**: When inspecting subagent outputs, transcripts, spilled buffers, GitHub PR diffs, or virtual tools, use `agent://`, `history://`, `artifact://`, `pr://`, `issue://`, `omp://`, `vault://` (opt-in via `vault.enabled`), or `xd://` instead of shell hacks or file scraping.
+2. **Use exact model selectors**: Always pass `<provider-id>/<model-id>` in automation from the active `config.yml` model roles/enabled models and agent definitions (e.g. `openai-codex/gpt-6.1-sol` on this Mac). Prefer configured subscription providers; do not substitute a paid API provider for a subscription selector.
+3. **Use native internal URLs and virtual devices**: When inspecting subagent outputs, transcripts, spilled buffers, GitHub PR diffs, or virtual tools, use `agent://`, `history://`, `proc://`, `artifact://`, `pr://`, `issue://`, `omp://`, `vault://` (opt-in via `vault.enabled`), or `xd://` instead of shell hacks or file scraping.
 4. **Never leak secrets in transcripts**: Set `apiKey: ENV_VAR_NAME` or `apiKey: "!command"` in `models.yml`. Use OMP's native secret obfuscation (`secrets.enabled: true` in `config.yml`) to replace sensitive tokens with placeholders before sending to providers.
 5. **Honor config precedence**: Defaults -> Global (`~/.omp/agent/config.yml`) -> Project (`<cwd>/.omp/config.yml`) -> `--config` overlays -> CLI runtime flags.
 
@@ -46,12 +46,12 @@ Load the dedicated reference file for detailed workflows and schemas:
 
 - **Config, models, credentials, and auth**: Read [references/config-and-models.md](references/config-and-models.md) for `models.yml` syntax, the 7-tier credential resolution order, model roles, `omp models`, `omp bench`, `auth-broker`, and `auth-gateway`.
 - **Headless runs, reviews, and session lifecycle**: Read [references/runs-and-sessions.md](references/runs-and-sessions.md) for headless JSON parsing, automated code-review recipes, multi-root setups, `/fresh` vs `/clear` vs `/drop`, `/tree` vs `/branch`, and `/shake` vs `/handoff`.
-- **Subagents, delegation, and hub supervision**: Read [references/subagents-and-hub.md](references/subagents-and-hub.md) for `task` batch schemas, worktree isolation, custom `.omp/agents/*.md`, and `hub` peer messaging and process daemons.
-- **Internal URLs and virtual devices**: Read [references/internal-urls-and-devices.md](references/internal-urls-and-devices.md) for `agent://`, `history://`, `artifact://`, `local://`, `pr://`, `issue://`, `ssh://`, `vault://`, `memory://`, `omp://`, and `xd://` tool invocation.
+- **Subagents, peer messaging, and process supervision**: Read [references/subagents-and-supervision.md](references/subagents-and-supervision.md) for `task` batch schemas, worktree isolation, custom `.omp/agents/*.md`, `write agent://` messaging, `wait`, and `proc://` jobs/services.
+- **Internal URLs and virtual devices**: Read [references/internal-urls-and-devices.md](references/internal-urls-and-devices.md) for `agent://`, `history://`, `proc://`, `artifact://`, `local://`, `pr://`, `issue://`, `ssh://`, `vault://`, `memory://`, `omp://`, and `xd://` tool invocation.
 - **Workflow controls and power features**: Read [references/workflow-controls.md](references/workflow-controls.md) for Prewalk, Plan-yolo, magic keywords (`ultrathink`, `orchestrate`, `workflowz`), approval modes, and the Advisor watchdog.
 
 ## Documentation & Sources
-- **Bundled First-Party Docs (`omp://`)**: Run `read("omp://")` to inspect 130 offline, version-matched documentation files (e.g. `omp://approval-mode.md`, `omp://prewalk.md`, `omp://agent-hub.md`).
+- **Bundled First-Party Docs (`omp://`)**: In OMP use `read("omp://")`; from the shell use `omp read omp://`. The 18.13.0 index lists 134 offline, version-matched files, including `omp://tools/task.md`, `omp://tools/write.md`, `omp://tools/wait.md`, `omp://bash-tool-runtime.md`, and `omp://agent-hub.md` (the human-facing TUI). Re-read the index after upgrades.
 - **Official Site & Docs**: [omp.sh](https://omp.sh/) | [omp.sh/docs](https://omp.sh/docs)
 - **Unofficial Documentation**: [nibblebot.github.io/oh-my-pi](https://nibblebot.github.io/oh-my-pi/)
 - **Upstream Repository**: [github.com/can1357/oh-my-pi](https://github.com/can1357/oh-my-pi)

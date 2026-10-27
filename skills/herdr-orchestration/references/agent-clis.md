@@ -1,6 +1,6 @@
 # claude + codex + pi CLI reference
 
-Verified against **claude 2.1.228**, **codex-cli 0.147.0**, and **pi 0.84.1** (flags checked live; the codex model/effort combination `gpt-5.6-luna` + `max` verified end-to-end). If versions differ, confirm with `--help`.
+Verified against **claude 2.1.311**, **codex-cli 0.164.0**, and **pi 1.4.0** (flags and model lists checked 2026-10-27). If versions differ, confirm with `--help`.
 
 Both implementer and reviewer agents run as **interactive panes** (via `herdr agent start`) in **yolo mode** — no sandboxes, no approval prompts. Sandboxes caused constant breakage (blocked writes, blocked `gh`, stalled approvals); the operator's accepted tradeoff is: the worktree is not a security boundary — the protections are the reviewer gate, the oid-pinned merge gate, and secret discipline in the spawn prompts. Re-review is simply another `herdr agent prompt` to the same pane: no session-id capture, no resume machinery.
 
@@ -9,11 +9,11 @@ Both implementer and reviewer agents run as **interactive panes** (via `herdr ag
 ### Interactive launch (inside a herdr pane, via `agent start --kind claude`)
 
 ```bash
-claude --model <claude-opus-5|claude-fable-5> --effort <low|medium|high|xhigh|max> \
+claude --model <claude-opus-5-5|claude-fable-5-1> --effort <low|medium|high|xhigh|max> \
   --permission-mode bypassPermissions
 ```
 
-- `--model` takes an alias (`opus`, `fable`) or full id (`claude-opus-5`, `claude-fable-5`). Prefer full ids in dispatch — aliases can drift across releases.
+- `--model` takes an alias (`opus`, `fable`) or full id (`claude-opus-5-5`, `claude-fable-5-1`). Prefer full ids in dispatch — aliases can drift across releases.
 - `--effort` maps 1:1 to the benchmark's reasoning-effort axis: `low, medium, high, xhigh, max`. A reviewer pane gets its own `--effort` per the matrix, independent of the orchestrator's session.
 - `--permission-mode bypassPermissions` is claude's yolo mode — it keeps an unattended agent from stalling on tool-approval prompts. Use it for implementer and reviewer panes alike.
 - Family pinning is free: Claude Code subagents inherit the parent session's model, so an implementer's fan-out stays on its own family with no overlay mechanism. Tell claude implementers to fan out to subagents for larger tasks with independent chunks.
@@ -22,7 +22,7 @@ claude --model <claude-opus-5|claude-fable-5> --effort <low|medium|high|xhigh|ma
 ### Headless (scripting fallback only)
 
 ```bash
-claude -p "<prompt>" --model claude-opus-5 --effort high --permission-mode bypassPermissions
+claude -p "<prompt>" --model claude-opus-5-5 --effort high --permission-mode bypassPermissions
 claude -p --continue "<follow-up>"       # or: --resume <session-id> / --session-id <uuid>
 ```
 
@@ -33,11 +33,11 @@ For one-shot scripting needs only — **never for reviews**; reviewers run as vi
 ### Interactive launch (inside a herdr pane, via `agent start --kind codex`)
 
 ```bash
-codex -m <gpt-5.6-sol|gpt-5.6-luna> -c model_reasoning_effort="<effort>" \
+codex -m <gpt-6.1-sol|gpt-6-luna> -c model_reasoning_effort="<effort>" \
   --dangerously-bypass-approvals-and-sandbox
 ```
 
-- Effort values: `low, medium, high, xhigh, max` (`max` is GPT-5.6-only; verified working). Remember the hard rules: luna only at `max`; sol never below `medium` in practice.
+- Effort values: `low, medium, high, xhigh, max` (`max` exists on GPT-6-generation models). Remember the hard rules: luna only at `max`; sol never below `medium` in practice.
 - `--dangerously-bypass-approvals-and-sandbox` is codex's yolo mode: no sandbox, no approval prompts. Do **not** use `--sandbox` modes (`workspace-write`, `read-only`) — the sandbox breaks tooling constantly (blocked temp files, blocked `gh`, blocked package managers) and is why this skill abandoned it.
 - `-C <dir>` sets the working directory if the pane's cwd isn't already the worktree.
 - Codex has no cross-family subagent fan-out; codex implementers work single-agent (sol is step-efficient, this is fine).
@@ -48,13 +48,13 @@ codex -m <gpt-5.6-sol|gpt-5.6-luna> -c model_reasoning_effort="<effort>" \
 ### Interactive launch (inside a herdr pane, via `agent start --kind pi`)
 
 ```bash
-pi --model opencode-go/deepseek-v4-flash:max -a    # default bulk implementer / reviewer
+pi --model opencode-go/deepseek-v4.1-flash:max -a  # default bulk implementer / reviewer
 pi --model opencode-go/deepseek-v4-pro:max -a      # reserve: smaller Go allowance, possible quality gain
-pi --model xai/grok-4.6:high -a                    # scarce weekly pool; :high documents the vendor default
-# z.ai lane parked — Coding Plan auto-routes GLM-5.2/5.1 to GLM-5.3 (429s as of 2026-08); do not dispatch zai/… until stable
+pi --model xai/grok-4.6:high -a                    # scarce weekly pool; keep it at high
+pi --model zai/glm-5.3-flash:high -a                # small/medium tasks; one GLM pane at a time (shared z.ai cap)
 ```
 
-- **Only these combos are approved.** DeepSeek supports `high|max`; use `max`. Grok supports `low|medium|high|xhigh`, but pi 0.84.1 cannot transmit its effort, so `:high` is documentary and the request uses xAI's current default `high`; `:xhigh` would not escalate it. **z.ai remains parked**: its Coding Plan routes GLM-5.2/5.1 to GLM-5.3, which rate-limited operator tests within minutes. Re-add it only after a clean retest.
+- **Only these combos are approved.** DeepSeek supports `high|max`; use `max`. Grok supports `low|medium|high|xhigh` and pi transmits the suffix; use `:high` (quota policy), since `:xhigh` really requests xhigh. z.ai GLM lanes share one plan cap; serialize them.
 - pi has **no approval or sandbox system at all** — every tool call (read, bash, edit, write) runs unprompted; it is inherently yolo. The only startup gate is project-local file trust: pass `-a` (`--approve`) so a fresh worktree pane never stalls on the trust dialog.
 - Provider ↔ subscription ↔ codexbar mapping: `opencode-go/…` → OpenCode Go sub → `codexbar --provider opencodego`; `zai/…` → z.ai sub → `--provider zai`; `xai/…` → Supergrok shared weekly pool → `--provider grok`.
 - No subagent fan-out; pi implementers work single-agent, like codex.

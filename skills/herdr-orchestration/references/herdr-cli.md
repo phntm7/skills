@@ -84,13 +84,13 @@ Then start the agent **in that existing pane** — herdr runs the canonical exec
 
 ```bash
 herdr agent start "i<n>" --kind claude --pane <pane-id> --timeout 60000 -- \
-  --model claude-opus-5 --effort high --permission-mode bypassPermissions
+  --model claude-opus-5-5 --effort high --permission-mode bypassPermissions
 
 herdr agent start "i<n>" --kind codex --pane <pane-id> --timeout 60000 -- \
-  -m gpt-5.6-sol -c model_reasoning_effort="high" --dangerously-bypass-approvals-and-sandbox
+  -m gpt-6.1-sol -c model_reasoning_effort="high" --dangerously-bypass-approvals-and-sandbox
 
 herdr agent start "i<n>" --kind pi --pane <pane-id> --timeout 60000 -- \
-  --model opencode-go/deepseek-v4-flash:max -a
+  --model opencode-go/deepseek-v4.1-flash:max -a
 ```
 
 - `--kind` supports `claude`, `codex`, `pi` (among ~20 kinds); herdr detects the agent process and tracks its status.

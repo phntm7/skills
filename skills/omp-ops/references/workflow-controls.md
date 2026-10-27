@@ -4,7 +4,7 @@ Use this reference to configure cost-saving model handoffs (Prewalk, Plan-yolo),
 
 ## 1. Cost-Saving Model Handoffs
 
-Strong frontier models (Opus, Fable, GPT-5.6) plan best, while fast/cheap models (Luna, MiMo, Flash) implement mechanical code at a fraction of the cost. OMP provides two automated handoff mechanics:
+Use the configured planning/slow role for planning and a configured fast lane for mechanical execution; read active config and agent files before choosing either model. OMP provides two automated handoff mechanics:
 
 ### Prewalk: Plan on Strong, Implement on Smol
 
@@ -35,7 +35,7 @@ How it works:
 omp --plan-yolo
 
 # Arm plan-yolo with explicit target model
-omp --plan-yolo --plan-yolo-into openai/gpt-5.6-luna
+omp --plan-yolo --plan-yolo-into openai-codex/gpt-6-luna
 ```
 
 *Difference from Prewalk:* Prewalk waits for the first edit tool call; Plan-yolo strictly forces read-only plan mode first and swaps immediately upon plan approval.
@@ -47,7 +47,7 @@ OMP scans user prompt prose for standalone keywords at turn start (Unicode word 
 | Keyword | Single-Turn Effect |
 | `ultrathink` | Injects careful multi-step reasoning prompt. **When automatic thinking is active**, also raises thinking effort to maximum (`max` / `xhigh`) for this turn only. |
 | `orchestrate` | Turns the current turn into an orchestrator: enforces task decomposition, dispatches parallel subagents via `task`, and forbids early yield. |
-| `workflowz` | Instructs the model to author a deterministic multi-agent pipeline using `eval` runtime primitives (`parallel`, `pipeline`, `agent`, `completion`). |
+| `workflowz` | Instructs the model to author a deterministic multi-agent pipeline using `eval` runtime primitives (`agent()`, `completion()`, handle `wait()`, `workpool()`). |
 
 *Keyword Detection & Escaping:*
 - OMP evaluates prompt text for standalone keyword tokens (case-sensitive lowercase; `Orchestrate` does not trigger).

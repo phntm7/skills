@@ -19,7 +19,7 @@ Use this reference to drive Oh My Pi (`omp`) in automated pipelines, scripts, ex
 
 1. **Start the session and capture session ID**:
    ```bash
-   omp -p --mode json --cwd /path/to/project --model openai/gpt-5.6 '<task prompt>' | tee /tmp/omp-session.jsonl
+   omp -p --mode json --cwd /path/to/project --model openai-codex/gpt-6.1-sol '<task prompt>' | tee /tmp/omp-session.jsonl
    
    # Extract the session ID from the session header
    session_id=$(jq -r 'select(.type=="session") | .id' /tmp/omp-session.jsonl)
@@ -52,14 +52,14 @@ When an external coding agent or CI script invokes OMP to perform an in-depth co
 # 1. Read-only review with explicit cwd and strict approval boundary
 omp -p \
   --cwd /path/to/repo \
-  --model anthropic/claude-opus-5 \
+  --model anthropic/claude-opus-5-5 \
   --approval-mode always-ask \
   "Review the staged changes in this repository against standards and spec. Report critical bugs, security flaws, and architectural regressions with file and line references."
 
 # 2. Maximum isolation advisory run (disables all tools)
 omp -p \
   --cwd /path/to/repo \
-  --model openai/gpt-5.6 \
+  --model openai-codex/gpt-6.1-sol \
   --no-tools \
   "$(git diff main...HEAD)"
 ```

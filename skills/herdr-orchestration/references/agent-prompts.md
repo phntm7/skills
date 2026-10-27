@@ -6,7 +6,7 @@ Fill the `{...}` slots from the repo and the issue source. `{verify_cmd}` and br
 
 Keep prompts lean. Modern models are good at figuring things out; give them the task, the constraints that aren't discoverable, and the output contract — not a procedure manual.
 
-The Matt Pocock skill set is installed globally (`~/.agents/skills`) for both claude and codex. Prompts **route to those skills by name** and never restate what a skill already teaches — duplicated guidance drifts out of sync and bloats prompts.
+When workflow skills are installed (preflight step 6 in SKILL.md), prompts **route to them by name** and never restate what a skill already teaches — duplicated guidance drifts out of sync and bloats prompts. Routing lines for skills that are not installed are dropped; the skeletons stay self-contained.
 
 ## Implementer (first dispatch — claude or codex pane)
 
@@ -19,7 +19,7 @@ Acceptance criteria are the definition of done. Honor any "Blocked by".
 Keep it simple (YAGNI): the smallest coherent implementation that meets acceptance — maintainable and readable, no speculative abstractions, few focused tests that exercise real behavior.
 
 - Follow the repo's conventions (AGENTS.md/CLAUDE.md).
-- Use the globally installed skills instead of improvising workflow: drive the work with the `implement` skill; `diagnosing-bugs` when fixing a bug; `tdd` when the task or repo calls for test-first; `codebase-design` / `design-an-interface` / `domain-modeling` when the task shapes a new module, API, or domain concept; `research` or `wayfinder` to orient in unfamiliar territory. Other installed skills apply as relevant — don't reinvent what a skill covers.
+{skills_line}
 - Scope: this issue only. Match existing patterns; no drive-by refactors.
 {fan_out_line}
 - Branch is already checked out here: {branch}. Commit per the repo's conventions.
@@ -31,13 +31,14 @@ Keep it simple (YAGNI): the smallest coherent implementation that meets acceptan
 When done, print exactly: PR_NUMBER: <n>  (and any true blocker).
 ```
 
+- `{skills_line}` = a bullet routing to installed workflow skills, naming only those preflight step 6 found; omit it when none are installed. Full form: "- Use the installed skills instead of improvising workflow: drive the work with the `implement` skill; `diagnosing-bugs` when fixing a bug; `tdd` when the task or repo calls for test-first; `codebase-design` / `design-an-interface` / `domain-modeling` when the task shapes a new module, API, or domain concept; `research` or `wayfinder` to orient in unfamiliar territory."
 - `{fan_out_line}` (claude implementers only) = `- For larger tasks, fan out to subagents to parallelize independent chunks; they run on your own model.` Omit for codex and pi.
 - `{closes_clause}` = `; include "Closes #<N>"` for GitHub issues, else empty.
 - `{branch}` = the issue's branch per the repo's naming convention (default `feature/{slug}`).
 
 ## Reviewer (each review pass — the `r<n>` pane)
 
-Both reviewer kinds get the same routing line, prepended: `Use the code-review skill.` — or, for hard-tier changes (large refactors, deep-analysis work), `Use the deep-code-review skill.` Both kinds post the PR comment themselves.
+Both reviewer kinds get the same routing line, prepended when the skill is installed: `Use the code-review skill.` — or, for hard-tier changes (large refactors, deep-analysis work), `Use the deep-code-review skill.` If neither is installed, omit the line; the skeleton below is self-contained. Both kinds post the PR comment themselves.
 
 ```text
 You are the code reviewer for PR #{N} in this worktree ({wt_path}). You NEVER modify the worktree: no edits, no commits, no pushes — inspection and running the verify command only.
