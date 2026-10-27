@@ -1,4 +1,4 @@
 interface:
   display_name: "Coding Benchmarks"
   short_description: "Compare LLM coding performance via DeepSWE and FrontierCode leaderboards."
-  default_prompt: "Use $coding-benchmarks to compare model, reasoning effort, harness, and cost before picking a model."
+  default_prompt: "Use $coding-benchmarks to compare Claude Opus 5.5, GPT-6.1 Sol, GPT-6 Luna, and GLM-5.3 at relevant effort levels; report source dates, harness, cost, and any absent current models."

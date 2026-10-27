@@ -1,12 +1,15 @@
 # Kimi Prompting Notes
 
-Last verified: 2026-05-13
+Last verified: 2026-05-13; may be stale (newer version-specific guidance not verified).
 
 ## Scope
 
-Use this reference for Kimi models, especially Kimi K2.6. Kimi's public prompt guidance is mostly general prompting advice, so this file intentionally stays short and avoids padding with universal rules.
+Model names checked: 2026-10-27. The official docs index lists Kimi K3.1 Pro
+as flagship and K3, K2.7 Code, and K2.6 as earlier models. The K2.6 notes
+below remain historical; verify the current model's guide before transferring
+version-specific behavior or API settings.
 
-## Kimi K2.6
+## Kimi K2.6 (historical notes)
 
 - Kimi K2.6 documentation highlights improved long-context coding stability; prompt large coding tasks with explicit scope, target files, and completion criteria.
 - Kimi K2.6 supports large-context coding workflows; label source files, modules, logs, and acceptance criteria clearly.

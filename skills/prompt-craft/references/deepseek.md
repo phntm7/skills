@@ -1,10 +1,16 @@
-# DeepSeek V4 Prompting Notes
+# DeepSeek Prompting Notes
 
-Last verified: 2026-05-13
+Last verified: 2026-05-13; may be stale (newer version-specific guidance not verified).
 
 ## Scope
 
-Covers DeepSeek V4 Pro and DeepSeek V4 Flash through the official DeepSeek API. Treat third-party gateways and local wrappers as separate integration surfaces because they may not preserve DeepSeek reasoning fields correctly.
+Model names checked: 2026-10-27. The official quickstart now recommends
+`deepseek-flash`, served by DeepSeek-V4.1-Flash-1017. Legacy
+`deepseek-v4-flash` requests are also served by that model; this runtime alias
+is not evidence that historical V4 benchmark results belong to V4.1.
+
+The behavior and controls below were verified for DeepSeek V4 Pro / Flash
+in May, not revalidated for V4.1. Treat third-party gateways and local wrappers as separate integration surfaces because they may not preserve DeepSeek reasoning fields correctly.
 
 ## Behavior and Tuning
 
@@ -19,7 +25,7 @@ Covers DeepSeek V4 Pro and DeepSeek V4 Flash through the official DeepSeek API. 
 - OpenAI-compatible calls use `extra_body={"thinking": {"type": "enabled"}}` or `{"type": "disabled"}`.
 - Use `reasoning_effort: "high"` or `"max"` for thinking effort in OpenAI-compatible calls.
 - Anthropic-compatible calls use `output_config.effort` for effort control.
-- Legacy aliases map to V4 Flash modes: `deepseek-chat` maps to non-thinking mode and `deepseek-reasoner` maps to thinking mode. These aliases are scheduled for deprecation on 2026-07-24.
+- Legacy aliases map to V4 Flash modes: `deepseek-chat` maps to non-thinking mode and `deepseek-reasoner` maps to thinking mode. The earlier docs scheduled deprecation for 2026-07-24; that date has passed, so verify availability rather than relying on these aliases.
 
 ## Tool Use and Agentic Patterns
 

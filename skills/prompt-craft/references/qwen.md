@@ -1,12 +1,14 @@
 # Qwen Prompting Notes
 
-Last verified: 2026-05-13
+Last verified: 2026-05-13; may be stale (newer version-specific guidance not verified).
 
 ## Scope
 
-Use this reference for Qwen3.6 and Qwen3-family models. Qwen's official Qwen3.6 repository currently points to a user guide that is still coming, so treat these notes as current capability and formatting guidance rather than a complete prompting guide.
+Model names checked: 2026-10-27. The official Qwen3.6 repository redirects to
+Qwen3.8. The Qwen3.6 notes below remain historical; verify current cloud model
+IDs, templates, and controls before applying them to Qwen3.8.
 
-## Qwen3.6
+## Qwen3.6 (historical notes)
 
 - Qwen3.6 emphasizes agentic coding, repository-level reasoning, and thinking preservation across conversation history.
 - For Qwen Cloud, prefer `qwen3.6-plus` for strongest reasoning, full tool support, and 1M context; try `qwen3.6-flash` after the use case is working to reduce cost.
@@ -31,7 +33,7 @@ Use this reference for Qwen3.6 and Qwen3-family models. Qwen's official Qwen3.6 
 
 ## Sources
 
-- Qwen3.6 official repository: https://github.com/QwenLM/Qwen3.6
+- Current Qwen3.8 official repository: https://github.com/QwenLM/Qwen3.8
 - Qwen Cloud text generation models: https://docs.qwencloud.com/developer-guides/getting-started/text-generation-models
 - Qwen quickstart and thinking mode: https://qwen.readthedocs.io/en/v3.0/getting_started/quickstart.html
 - Qwen key concepts: https://qwen.readthedocs.io/en/latest/getting_started/concepts.html

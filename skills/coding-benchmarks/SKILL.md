@@ -7,10 +7,12 @@ description: >
 
 # Coding Benchmarks
 
-Last verified: 2026-09-03 (DeepSWE `generated_at` 2026-09-02; FrontierCode
-publishes no board date).
+Checked: 2026-10-27. Both live fetches succeeded without cache fallback:
+DeepSWE v1.1 returned 70 model × effort rows (`generated_at`
+2026-09-22T06:27:15.860279+00:00); FrontierCode v1_1 returned 141 rows
+and publishes no board date. A fresh fetch can still contain dated results.
 
-Up-to-date leaderboard data for model-selection decisions from two agentic
+Fetch leaderboard data for model-selection decisions from two agentic
 coding benchmarks that measure different things:
 
 - **DeepSWE v1.1** — pass@1/pass@4 under a single harness (mini-swe-agent),
@@ -24,15 +26,24 @@ coding benchmarks that measure different things:
 
 ## Model identity
 
-Rows join across boards through the canonical `model_id`, but version-distinct
-models are never aliased. Exact variant names present today: DeepSWE v1.1 has
-`claude-fable-5` (no Fable 5.1, no MiMo 2.5) and bare `DeepSeek V4 Flash` /
-`DeepSeek V4 Pro`; FrontierCode v1_1 has `Claude Fable 5.1` (no Fable 5, no
-MiMo 2.5) and the dated variants `DeepSeek V4 Flash 0731` and `DeepSeek V4 Pro
-0813`. Merge an alias only after the boards confirm both names are the same
-model. A requested model absent from a board appears as an explicit
-`absent on <board>` row (`missing_from_board` in JSON), never as a silent
-merge or silent gap.
+Rows join across boards through canonical `model_id`. Preserve version
+identity: Opus 5.5 is distinct from Opus 5, Fable 5.1 from Fable 5, GPT-6.1
+Sol from GPT-6 Sol and GPT-5.6 Sol, and DeepSeek V4.1 Flash from V4 Flash
+or its dated variants. Normalize punctuation only for confirmed identities.
+
+Current candidates (2026-10-27) include Claude Opus 5.5, Fable 5.1,
+Sonnet 5.5, Haiku 5.5; GPT-6.1 Sol / Terra, GPT-6 Luna, GPT-6 Astra; GLM-5.3 /
+GLM-5.3-Flash; DeepSeek V4.1 Flash; MiMo 2.6 Pro / Flash; and Muse Spark.
+This is a candidate roster, not a claim that every model is on either board.
+Do not substitute a historical row for an absent current model. In particular,
+versioned Muse Spark rows do not establish identity with an unversioned API
+model without provider confirmation.
+
+A requested model absent from a board appears as an explicit
+`absent on <board>` row (`missing_from_board` in JSON). Check exact returned
+IDs: broad family patterns can also select older generations. Scripts have
+no fixed model roster by default; omitting `--models` returns all board models,
+including historical ones.
 
 ## Usage
 
@@ -41,7 +52,7 @@ bounded so the agent receives only the rows it needs:
 
 ```bash
 node <skill-dir>/scripts/compare_benchmarks.mjs --json \
-  --models 'claude-opus-5,gpt-5.6-sol,grok-4.6,deepseek-v4-pro'
+  --models 'claude-opus-5-5,gpt-6.1-sol,gpt-6-luna,deepseek-v4.1-flash'
 ```
 
 The comparison defaults to one best row per model from each board. Add `--all`
@@ -51,7 +62,7 @@ its best row:
 
 ```bash
 node <skill-dir>/scripts/compare_benchmarks.mjs --json --all \
-  --models 'claude-opus-5,gpt-5.6-sol' --effort 'high,xhigh'
+  --models 'claude-opus-5-5,gpt-6.1-sol' --effort 'high,xhigh'
 ```
 
 Run the board scripts directly when the user names one board, or when the
@@ -83,11 +94,20 @@ Pick by the question's shape: mergeability, harness behavior, and production
 quality → FrontierCode; pass@k, retry tolerance, and single-harness cost →
 DeepSWE. A generic model-choice answer is not complete until both boards are
 in hand; if one fetch fails, report it and do not treat the other board as a
-complete comparison. When the boards agree on the same model × effort, that is
-the recommendation; when they disagree, follow the shape rule and state the
-other board's top pick as a cross-check.
+complete comparison. Agreement on model × effort strengthens the evidence,
+but still check availability, cost, latency, task fit, and local model policy. When the boards
+disagree, follow the shape rule and state the other board's top pick as a
+cross-check.
 
 ## Recommending a model
+
+If `~/.agents/model-policy.md` exists, read it before choosing a model or
+reviewer for its current roles, cross-family review, and shared quota limits.
+If absent, use the host policy and available benchmark evidence; its absence
+is not a blocker. Operating policy is separate from leaderboard results. Compare
+available current candidates first; benchmark effort labels are measured
+settings, not portable defaults across families or model generations. Use
+local evals for candidates missing from a board.
 
 1. Check `errors`, `stale`, and the per-board unmatched lists. A missing row
    can mean that a model or effort is absent from that board, not that

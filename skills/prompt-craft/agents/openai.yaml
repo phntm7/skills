@@ -1,4 +1,4 @@
 interface:
   display_name: "Prompt Craft"
-  short_description: "Write and tune prompts for modern models."
-  default_prompt: "Improve this prompt or tune it for a specific model."
+  short_description: "Write and tune prompts for current models."
+  default_prompt: "Use $prompt-craft to improve this prompt for GPT-6.1 Sol, GPT-6 Astra, GPT-6 Luna, Claude Opus 5.5, or Claude Fable 5.1; load the matching model reference and check its source date."

@@ -42,7 +42,7 @@
 //     --subset    task subset (default: main; extended = 150 tasks)
 //     --metric    ranking metric (default: pass; score = rubric score)
 //     --all       one row per model x effort instead of best-effort-per-model
-//     --models    comma-separated model ids, names, families, or globs
+//     --models    comma-separated model ids, names, families, or globs (default: all board models)
 //     --effort    comma-separated effort levels or globs
 // Requires Node >= 18 (global fetch).
 
@@ -75,8 +75,12 @@ if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
   --subset    task subset (default: main; extended = 150 tasks)
   --metric    ranking metric (default: pass; score = rubric score)
   --all       one row per model x effort instead of best-effort-per-model
-  --models    comma-separated model ids, names, families, or globs
-  --effort    comma-separated effort levels or globs`);
+  --models    comma-separated model ids, names, families, or globs (default: all board models)
+  --effort    comma-separated effort levels or globs
+
+Example (current candidates, checked 2026-10-27):
+  node frontiercode_leaderboard.mjs --json --models 'claude-opus-5-5,gpt-6.1-sol,glm-5.3-flash'
+Missing candidates are reported explicitly; historical board rows keep their identity.`);
   process.exit(0);
 }
 const VERSION = optionValue(args, "--version", "v1_1");

@@ -39,13 +39,17 @@ if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
   --json                 print compact JSON instead of a markdown table
   --fresh                ignore cache TTL and refetch both boards now
   --all                  one row per model x effort (FrontierCode every level)
-  --models <patterns>    comma-separated model ids, names, families, or globs
+  --models <patterns>    comma-separated model ids, names, families, or globs (default: all board models)
   --effort <patterns>    comma-separated effort levels or globs
   --subset main|extended FrontierCode task subset (default: main)
   --metric pass|score    FrontierCode ranking metric (default: pass)
   --deepswe-version <id> benchmark revision (default: v1.1)
   --frontiercode-version v1_1|v1
-                         benchmark revision (default: v1_1)`);
+                         benchmark revision (default: v1_1)
+
+Example (current candidates, checked 2026-10-27):
+  node compare_benchmarks.mjs --json --models 'claude-opus-5-5,gpt-6.1-sol,glm-5.3-flash'
+Missing candidates are reported explicitly; historical board rows keep their identity.`);
   process.exit(0);
 }
 const ALL = hasFlag(args, "--all");

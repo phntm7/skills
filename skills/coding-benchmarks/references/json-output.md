@@ -1,5 +1,9 @@
 # JSON output
 
+Checked: 2026-10-27 (live fetch and schema). Numeric examples below are
+historical examples retained from the 2026-09-03 reference, not current
+rankings or recommendations.
+
 The two board scripts emit compact, percentage-scaled rows. The scripts keep
 their board-specific metrics, but share filter, cache, and model-identity
 metadata so an agent can parse them without probing the payload.
@@ -22,7 +26,11 @@ Both scripts include these top-level fields:
 
 Filters accept comma-separated exact names, family tokens, or globs. Model
 matching checks the canonical ID and the board's original name, so all of
-these select the same model: `grok-4.6`, `grok-4-6`, and `Grok 4.6`.
+these select the same model: `gpt-6.1-sol`, `gpt-6-1-sol`, and `GPT-6.1 Sol`.
+Use current candidates such as `claude-opus-5-5`, `claude-fable-5-1`,
+`gpt-6-luna`, `gpt-6-astra`, `glm-5.3-flash`, or
+`deepseek-v4.1-flash` in active comparisons. Version-distinct IDs remain
+separate; punctuation normalization never upgrades historical results.
 
 ## DeepSWE rows
 
@@ -121,7 +129,7 @@ Each comparison row contains:
 join; a pattern matched by neither board still appears as a row with both
 boards listed (rendered `absent on deepswe, absent on frontiercode` in
 Markdown). It is distinct from an unmatched filter pattern. `boards.<board>`
-repeats each board's cache and freshness metadata (`from_cache`, `age`,
+repeats each board's cache and freshness metadata (`fromCache`, `age_hours`,
 `stale`, `fetched_at`). The two recommendation
 signals use selected DeepSWE rows at the same effort: `ci_overlaps_with` lists
 rows whose pass@1 confidence intervals overlap, and `dominated_by` lists rows

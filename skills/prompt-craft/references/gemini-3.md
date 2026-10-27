@@ -1,8 +1,11 @@
 # Gemini 3 Prompting Notes
 
-Last verified: 2026-05-13
+Last verified: 2026-05-13; may be stale (newer version-specific guidance not verified).
 
 ## Scope
+
+The saved Vertex prompting-guide URL returned 404 on 2026-10-27. Newer
+Gemini model names and guidance were not verified; treat these as Gemini 3 notes.
 
 Use this reference for Gemini 3 and Gemini 3.1 Pro.
 

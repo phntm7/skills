@@ -20,7 +20,7 @@
 //     --fresh    ignore cache TTL and refetch now
 //     --json     print compact JSON rows instead of markdown
 //     --version  benchmark version id (default: v1.1)
-//     --models   comma-separated model ids, names, families, or globs
+//     --models   comma-separated model ids, names, families, or globs (default: all board models)
 //     --effort   comma-separated effort levels or globs
 // Requires Node >= 18 (global fetch).
 
@@ -47,8 +47,12 @@ if (hasFlag(args, "--help") || hasFlag(args, "-h")) {
   --fresh    ignore cache TTL and refetch now
   --json     print compact JSON rows instead of markdown
   --version  benchmark version id (default: v1.1)
-  --models   comma-separated model ids, names, families, or globs
-  --effort   comma-separated effort levels or globs`);
+  --models   comma-separated model ids, names, families, or globs (default: all board models)
+  --effort   comma-separated effort levels or globs
+
+Example (current candidates, checked 2026-10-27):
+  node deepswe_leaderboard.mjs --json --models 'claude-opus-5-5,gpt-6.1-sol,glm-5.3-flash'
+Missing candidates are reported explicitly; historical board rows keep their identity.`);
   process.exit(0);
 }
 const VERSION = optionValue(args, "--version", "v1.1");

@@ -74,7 +74,26 @@ function slugify(value) {
 // alias only when both boards confirm the two names are the same model; a
 // roster model absent from a board surfaces as an explicit absent/missing row,
 // never as a silent merge or silent gap.
+// Current roster checked 2026-10-27. Claude 5.x IDs follow the provider
+// spelling (claude-opus-5-5); GPT/GLM/DeepSeek version numbers use dots.
+// Historical IDs below retain their existing spelling for consumer stability;
+// adding a current version never aliases its predecessor.
 const CANONICAL_BY_KEY = new Map([
+  ["claudeopus55", "claude-opus-5-5"],
+  ["claudefable51", "claude-fable-5-1"],
+  ["claudesonnet55", "claude-sonnet-5-5"],
+  ["claudehaiku55", "claude-haiku-5-5"],
+  ["gpt61sol", "gpt-6.1-sol"],
+  ["gpt61terra", "gpt-6.1-terra"],
+  ["gpt6sol", "gpt-6-sol"],
+  ["gpt6luna", "gpt-6-luna"],
+  ["gpt6astra", "gpt-6-astra"],
+  ["glm53", "glm-5.3"],
+  ["glm53flash", "glm-5.3-flash"],
+  ["deepseekv41flash", "deepseek-v4.1-flash"],
+  ["mimo26pro", "mimo-2.6-pro"],
+  ["mimo26flash", "mimo-2.6-flash"],
+  ["musespark", "muse-spark"],
   ["claudeopus5", "claude-opus-5"],
   ["claudeopus48", "claude-opus-4.8"],
   ["claudeopus47", "claude-opus-4.7"],

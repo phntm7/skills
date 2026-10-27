@@ -1,6 +1,6 @@
 # Smaller Model Prompting Notes
 
-Last verified: 2026-05-13
+Last verified: 2026-05-13; may be stale (newer version-specific guidance not verified).
 
 ## Scope
 
@@ -31,7 +31,7 @@ Escalate to a stronger model when the task requires:
 
 ## Sources
 
-- OpenAI GPT-5.4 small-model guidance: https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.4
+- Historical OpenAI GPT-5.4 guidance (not a current-model recommendation): https://developers.openai.com/api/docs/guides/prompt-guidance?model=gpt-5.4
 - Gemini API prompt design strategies: https://ai.google.dev/gemini-api/docs/prompting-strategies
 - Kimi prompt best practices: https://platform.kimi.ai/docs/guide/prompt-best-practice
 - Qwen Cloud model guidance: https://docs.qwencloud.com/developer-guides/getting-started/text-generation-models
