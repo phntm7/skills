@@ -10,8 +10,10 @@ description: >
 Use this skill to improve existing coding-agent instruction files while
 preserving their intent. Treat `AGENTS.md` and `CLAUDE.md` as equivalent
 instruction files: prefer shared universal content, keep `AGENTS.md` canonical
-when possible, and keep `CLAUDE.md` as an `@AGENTS.md` import wrapper unless the
-user wants separate files.
+when possible. Claude Code reads `AGENTS.md` natively since v2.1.277; keep a
+`CLAUDE.md` only for Claude-specific content or as an `@AGENTS.md` wrapper
+where native reading does not apply. Do not delete an existing wrapper unless
+the user asks.
 
 ## When To Use
 
@@ -85,7 +87,7 @@ additions to the system prompt, so prompting guidance applies.
 
      ```text
      AGENTS.md
-     CLAUDE.md  # contains @AGENTS.md plus optional Claude-specific notes
+     CLAUDE.md  # optional: @AGENTS.md plus Claude-specific notes, or a wrapper
      ```
 
    - If both files contain useful divergent content, merge universal guidance

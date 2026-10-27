@@ -1,14 +1,22 @@
 # Instruction File Maintenance Rubric
 
-Last verified: 2026-07-13
+Last verified: 2026-10-27
 
 ## Functional Equivalence
 
 Treat `AGENTS.md` and `CLAUDE.md` as equivalent repository instruction files.
-Prefer `AGENTS.md` as the canonical cross-agent file. Use `CLAUDE.md` as an
-import wrapper containing `@AGENTS.md` plus optional Claude-specific content
-unless the user requests separate files or the project has a concrete
-compatibility reason.
+Prefer `AGENTS.md` as the canonical cross-agent file. Claude Code reads it
+natively since v2.1.277, but in its default mode only when no `CLAUDE.md`,
+`.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the working directory or an
+ancestor. Use `CLAUDE.md` for Claude-specific content (starting with
+`@AGENTS.md`), or as a plain `@AGENTS.md` wrapper where native reading does not
+apply. Check the effective mode first: user or managed settings key
+`pluginConfigs."cc-plugin-agents-md@builtin".options.instructionFiles`
+(modes are explained in the `agents-md-init` reference
+`instruction-file-practices.md`, section "Claude Code reads AGENTS.md"). Only in
+the default `claude-md-or-agents-md` mode, flag a stray ancestor `CLAUDE.md`
+(for example in `$HOME`): it silently disables native `AGENTS.md` for every
+repo below it. In `claude-md-and-agents-md` it is harmless.
 
 Both files enter the agent's system prompt every session. Every retained line
 must earn its context cost by solving an observed problem, not a theoretical
@@ -63,8 +71,8 @@ Remove or rewrite:
 
 - stale commands and paths;
 - TODO placeholders;
-- repeated rules under different headings — current frontier models (GPT-5.6,
-  Claude Fable 5, Claude Opus 4.8) follow instruction contracts closely, so
+- repeated rules under different headings — current frontier models (GPT-6.1 Sol,
+  Claude Fable 5.1, Claude Opus 5.5) follow instruction contracts closely, so
   contradictions and redundancy destabilize behavior more than missing detail;
 - absolute language (ALWAYS/NEVER/must) on judgment calls; keep absolutes only
   for true invariants and convert the rest to decision rules;

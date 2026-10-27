@@ -1,14 +1,17 @@
 # AGENTS.md and CLAUDE.md Practices
 
-Last verified: 2026-07-13
+Last verified: 2026-10-27
 
 ## Core Model
 
 Treat `AGENTS.md` and `CLAUDE.md` as repository instruction files with
 equivalent purpose: durable guidance for coding agents. `AGENTS.md` is the
 portable cross-agent default; `CLAUDE.md` is Claude Code's conventional project
-memory file. Claude Code reads `CLAUDE.md`, not `AGENTS.md`, so use
-`CLAUDE.md` to import the canonical shared instructions.
+memory file. Claude Code reads `AGENTS.md` natively since v2.1.277 (built-in plugin
+`cc-plugin-agents-md@builtin`), so a `CLAUDE.md` wrapper is no longer required.
+See "Claude Code reads AGENTS.md" below for the modes and the one trap: in the
+default mode any `CLAUDE.md` in the working directory or an ancestor turns
+native `AGENTS.md` reading off.
 
 Both files become part of the agent's system prompt and load every session.
 Every line spends context on every task, so each addition must solve a real,
@@ -18,11 +21,14 @@ keeps missing — not a theoretical concern about what an agent might need.
 Default repository setup:
 
 ```text
-AGENTS.md  # canonical shared instructions
-CLAUDE.md  # imports @AGENTS.md, then adds Claude-specific notes if needed
+AGENTS.md  # canonical shared instructions; read by Codex, Claude Code, Pi, OpenCode
 ```
 
-Use this `CLAUDE.md` shape by default:
+Add `CLAUDE.md` only when there is Claude-specific content, or when a wrapper is
+still needed (Claude Code older than 2.1.277, the built-in plugin disabled, or
+an ancestor `CLAUDE.md` that blocks native reading). Keep an existing
+`@AGENTS.md` wrapper unless the user asks to remove it. When a `CLAUDE.md` is
+needed, use this shape:
 
 ```markdown
 @AGENTS.md
@@ -82,7 +88,7 @@ Leave out:
 
 ## Writing For Current Frontier Models
 
-Current frontier models (GPT-5.6, Claude Fable 5, Claude Opus 4.8) follow
+Current frontier models (GPT-6.1 Sol, Claude Fable 5.1, Claude Opus 5.5) follow
 instruction contracts closely. This changes what a good instruction file looks
 like:
 
@@ -194,13 +200,37 @@ Codex builds its instruction chain once per run (once per TUI session):
 - To verify what loaded, ask Codex to summarize its current instructions, or
   inspect the TUI log / session `.jsonl`.
 
+## Claude Code reads AGENTS.md
+
+Source: https://code.claude.com/docs/en/memory#agents-md (checked 2026-10-27,
+Claude Code 2.1.311).
+
+- Since v2.1.277 the built-in plugin `cc-plugin-agents-md@builtin` reads
+  `AGENTS.md` and `.claude/AGENTS.md` from the working directory and its
+  ancestors.
+- Modes (`instructionFiles`):
+  - `claude-md-or-agents-md` (default): read `AGENTS.md` only when there is no
+    `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` in the working
+    directory or any ancestor. The user file `~/.claude/CLAUDE.md`, managed
+    files and `.claude/rules/` do not count.
+  - `claude-md-and-agents-md`: read both; an `AGENTS.md` already imported or
+    symlinked is not read twice.
+  - `claude-md`: ignore `AGENTS.md`. `managed-only`: managed files only.
+- Set the mode in `/config` → Project instructions, or in user settings at
+  `pluginConfigs."cc-plugin-agents-md@builtin".options.instructionFiles`.
+  Project and local settings files do not honour it.
+- Never read: `AGENTS.local.md`, `AGENTS.override.md` (Codex only), files under
+  `.agents/`.
+- Trap: a stray `CLAUDE.md` high in the tree (for example `~/CLAUDE.md`) turns
+  off native `AGENTS.md` for every repo below it in the default mode. Check
+  ancestors before relying on native reading.
+
 ## Claude Code Discovery Notes
 
 Claude Code loads `CLAUDE.md` memories across enterprise, project, user, and
 local scopes, and supports project files such as `./CLAUDE.md` or
-`./.claude/CLAUDE.md`. For this repository's convention, keep `AGENTS.md`
-canonical and make `CLAUDE.md` import `@AGENTS.md` unless there is a reason not
-to.
+`./.claude/CLAUDE.md`. Keep `AGENTS.md` canonical; add a `CLAUDE.md` only for
+Claude-specific content or when a wrapper is needed (see above).
 
 Mechanics to account for:
 

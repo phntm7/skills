@@ -9,8 +9,9 @@ description: >
 
 Use this skill to analyze a project and create practical, current instructions
 for coding agents. Treat `AGENTS.md` and `CLAUDE.md` as equivalent instruction
-files: prefer `AGENTS.md` as the canonical shared file and make `CLAUDE.md`
-import it with `@AGENTS.md` unless the user explicitly wants another setup.
+files: prefer `AGENTS.md` as the canonical shared file. Claude Code reads
+`AGENTS.md` natively since v2.1.277, so add `CLAUDE.md` only for
+Claude-specific content or when a wrapper is still needed.
 
 ## When To Use
 
@@ -59,8 +60,11 @@ system prompt, so prompting guidance applies.
      when they are safe and appropriate for the repo.
 
 3. **Choose the file plan**
-   - Default: create `AGENTS.md` at the repository root and create `CLAUDE.md`
-     containing `@AGENTS.md`, followed by any Claude-specific notes.
+   - Default: create `AGENTS.md` at the repository root. Create `CLAUDE.md`
+     (starting with `@AGENTS.md`) only for Claude-specific notes, or when the
+     reference's wrapper conditions apply: old Claude Code, the built-in
+     plugin disabled, or an ancestor `CLAUDE.md` that blocks native reading.
+     Keep an existing wrapper unless the user asks to remove it.
    - If `CLAUDE.md` exists but `AGENTS.md` does not, create `AGENTS.md` from the
      existing content plus project analysis, then reduce `CLAUDE.md` to an
      import wrapper with any truly Claude-specific content preserved.
@@ -99,8 +103,7 @@ system prompt, so prompting guidance applies.
 
 5. **Create the files**
    - Write `AGENTS.md`.
-   - Unless the user requested separate files, write `CLAUDE.md` as an import
-     wrapper:
+   - Only if a `CLAUDE.md` is needed (step 3), write it as an import wrapper:
 
      ```markdown
      @AGENTS.md
@@ -116,13 +119,18 @@ system prompt, so prompting guidance applies.
      `CLAUDE_CODE_NEW_INIT=1` enables its interactive multi-phase init flow.
 
 6. **Verify**
-   - Confirm both paths resolve and contain the intended content:
+   - Confirm the files resolve and contain the intended content:
 
      ```bash
      test -s AGENTS.md
-     test -s CLAUDE.md
-     grep -q '^@AGENTS.md$' CLAUDE.md || test -L CLAUDE.md
+     if [ -e CLAUDE.md ] || [ -L CLAUDE.md ]; then
+       grep -q '^@AGENTS.md$' CLAUDE.md || test -L CLAUDE.md
+     fi
      ```
+
+   - Without a `CLAUDE.md`, check that no ancestor directory has a
+     `CLAUDE.md` or `CLAUDE.local.md`; in Claude Code's default mode it would
+     stop native `AGENTS.md` reading.
 
    - Validate every documented command as far as feasible. If a command was not
      run, say why.
