@@ -40,7 +40,7 @@ The safest shared baseline is:
 
 - `skills.sh` discovers `skills/<skill>/SKILL.md`, `.agents/skills`, `.claude/skills`, `.opencode/skills`, and other compatible folders.
 - Use `DISABLE_TELEMETRY=1` or `DO_NOT_TRACK=1` for private repo operations.
-- Use `npx skills add . --list` to confirm discovery before publishing.
+- Use `skills add . --list` to confirm discovery before publishing.
 
 ## This Repo
 

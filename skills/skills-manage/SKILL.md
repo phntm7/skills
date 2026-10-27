@@ -39,7 +39,7 @@ Pick the smallest command that fits the request.
 | Copy instead of symlink | append `--copy` |
 | Remove interactively | `skills remove` |
 | Remove a specific skill | `skills remove <name>` (use `-g` for global) |
-| Upgrade installed skills | `skills update` (`-g` or `-p` to pick scope; `-y` to auto-pick) |
+| Upgrade installed skills | `skills update -g <name>` or `skills update -p <name>`; always pass the scope (see Guardrails) |
 | Scaffold a new skill | `skills init <name>` |
 | Restore from `skills-lock.json` | `skills experimental_install` |
 | Re-sync from `node_modules` | `skills experimental_sync` |
@@ -51,6 +51,15 @@ Source forms accepted by `add`:
 - Subpath into a repo: `https://github.com/owner/repo/tree/main/skills/<name>`
 - SSH: `git@github.com:owner/repo.git`
 - Local path: `.` or `./relative/path`
+
+## Find a Skill
+
+When the user asks for a skill for some task, or asks whether one exists:
+
+1. Check what is already installed: `skills ls -g --json` and the project's `skills ls --json`.
+2. Search the public catalog: `skills find <keywords>` (add `--owner <owner>` to stay within one publisher). Browse https://skills.sh/ for install counts.
+3. Before recommending a result, open its source repo and read its `SKILL.md`. Prefer known publishers and widely installed skills; treat unknown authors with few installs with care.
+4. Present the skill name, what it does, its source, and the exact `skills add <source> --skill <name>` command. Install only after the user agrees.
 
 ## Run a Skill Without Installing
 
@@ -65,7 +74,7 @@ Prefer `skills use` over `add` when the skill is needed temporarily; reach for `
 
 ## Scope
 
-- **Project (default)**: installs under the project's agent-specific dirs (e.g. `.claude/skills/`, `.agents/skills/`). Use when the skill should ship with the repo for teammates.
+- **Project (default for `add`)**: installs under the project's agent-specific dirs (e.g. `.claude/skills/`, `.agents/skills/`). Use when the skill should ship with the repo for teammates.
 - **Global (`-g`)**: installs under user-level dirs (e.g. `~/.claude/skills/`, `~/.agents/skills/`). Use for personal tooling that should apply everywhere.
 
 Follow the CLI default (project) unless the user explicitly asks for a personal or machine-wide install, in which case pass `-g`. When intent is ambiguous, ask before defaulting to global — global installs write to shared user-level state.
@@ -103,8 +112,8 @@ DISABLE_TELEMETRY=1 skills add git@github.com:phntm7/skills.git \
 # Remove a skill from global scope
 skills rm --global frontend-design -y
 
-# Upgrade everything in the current scope, auto-detect project vs global
-skills update -y
+# Refresh one global skill for chosen agents only: reinstall from its recorded source
+DISABLE_TELEMETRY=1 skills add anthropics/skills --skill frontend-design -g -a claude-code codex
 
 # Scaffold a new skill in the current directory
 skills init my-skill
@@ -130,6 +139,9 @@ Spot-check that the expected skill directory exists for at least one targeted ag
 
 ## Guardrails
 
+- `skills check` is not a dry run: in CLI 1.7.x it dispatches to `update` and rewrites installed skills. There is no read-only update check; compare `skills ls -g --json` with the source repo instead.
+- `skills update` cannot target agents: it reinstalls each skill to every agent the CLI detects. A named update without `-g` or `-p` touches both scopes. When agent targeting matters, refresh with `skills add <recorded-source> --skill <name> -g -a <agents>` instead; the source is in `~/.agents/.skill-lock.json` (global) or `skills-lock.json` (project).
+- Prefer naming skills and agents explicitly (`--skill <name>`, `-a claude-code codex`). `--all` and `-a '*'` write to every supported agent, including ones that are not installed.
 - Never invoke the CLI via `npx`; use `skills` directly. The user has it installed locally and `npx` may resolve a different version or hit the registry unnecessarily.
 - Never auto-install global packages or modify PATH without explicit user confirmation. `mise`, `brew`, and global `npm` installs touch shared state.
 - Use `-y` only when the user has expressed intent for non-interactive runs. Default to interactive on destructive operations (`remove`, `update`).
