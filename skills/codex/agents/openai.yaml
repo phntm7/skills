@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex"
+  short_description: "Run the Codex CLI non-interactively for GPT-family implementation or cross-family review."
+  default_prompt: "Use $codex to run codex exec on this task and report the result."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add MCP Server (Pi)"
+  short_description: "Add or troubleshoot an MCP server in the Pi coding agent."
+  default_prompt: "Use $add-mcp-server to add this MCP server to Pi and verify it connects."
